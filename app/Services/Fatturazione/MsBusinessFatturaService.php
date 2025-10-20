@@ -41,23 +41,51 @@ class MsBusinessFatturaService
         }
 
         // 2) Leggi Anagra (Business) per conto/iva/tpbf
-        $conto = (string)$cliente->codice_esterno;
-        $an = DB::connection(self::CONN)->table(self::T_ANAGRA)
-              ->select('an_conto','an_codtpbf','an_codese')
-              ->where('an_conto', $conto)
-              ->first();
-        if (!$an) throw new \RuntimeException("Conto {$conto} non trovato in ANAGRA.");
+    $conto = (string)$cliente->codice_esterno;
 
-        $codTpbf = $an->{self::COL_TPBF_IN_ANAGRA};
-        $ivaTestata = $an->an_codese; // può essere null
+    $an = DB::connection(self::CONN)->table(self::T_ANAGRA)
+        ->select('an_conto','an_codtpbf','an_codese')
+        ->where('an_conto', $conto)
+        ->first();
 
+    if (!$an) {
+        throw new \RuntimeException("Conto {$conto} non trovato in ANAGRA.");
+    }
+
+    // Normalizzazione TPBF: se 0 o NULL → 1
+    $codTpbfRaw = $an->{self::COL_TPBF_IN_ANAGRA} ?? null;
+    $codTpbf    = (int)$codTpbfRaw;
+    if ($codTpbf === 0) {
+        $codTpbf = 1;
+    }
+
+    $ivaTestata = $an->an_codese; // può essere null
+
+    // Lookup tabtpbf con retry automatico su 1 se non trovato
+    $tpbf = DB::connection(self::CONN)->table(self::T_TABTPBF)
+        ->select(self::COL_TPBF_CAUSALE, self::COL_TPBF_PK)
+        ->where(self::COL_TPBF_PK, $codTpbf)
+        ->first();
+
+    // Se non trovato, prova esplicitamente 1
+    if (!$tpbf && $codTpbf !== 1) {
         $tpbf = DB::connection(self::CONN)->table(self::T_TABTPBF)
-                ->select(self::COL_TPBF_CAUSALE)
-                ->where(self::COL_TPBF_PK, $codTpbf)
-                ->first();
-        if (!$tpbf) throw new \RuntimeException("tabtpbf non trovato per codice {$codTpbf}.");
+            ->select(self::COL_TPBF_CAUSALE, self::COL_TPBF_PK)
+            ->where(self::COL_TPBF_PK, 1)
+            ->first();
+        if ($tpbf) {
+            $codTpbf = 1; // allinea il valore usato in testata
+        }
+    }
 
-        $causaleMag = $tpbf->{self::COL_TPBF_CAUSALE};
+    if (!$tpbf) {
+        throw new \RuntimeException(
+            "tabtpbf non trovato. Cercato codice {$codTpbfRaw} " .
+            "(normalizzato a {$codTpbf}) e fallback a 1: nessun record disponibile."
+        );
+    }
+
+    $causaleMag = $tpbf->{self::COL_TPBF_CAUSALE};
 
         // 3) Numero documento
         $refs = $this->numeri->nextNumero('A','P',$anno); // tm_tipork='A', tm_serie='P'
