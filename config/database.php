@@ -99,11 +99,11 @@ return [
 
 'sqlsrv' => [
     'driver' => 'sqlsrv',
-    'host' => '192.168.120.245\BUSINESS',
-    'port' => null,//env('DB_SQLSRV_PORT', '50191'),
-    'database' => env('DB_SQLSRV_DATABASE', 'SEIMARCCUBE2'),
-    'username' => env('DB_SQLSRV_USERNAME', 'sa'),
-    'password' => env('DB_SQLSRV_PASSWORD', 'Seimarc2014'),
+    'host' => env('SQLSRV_HOST', '192.168.120.245'),
+    'port' => env('SQLSRV_PORT', '50191'),
+    'database' => env('SQLSRV_DATABASE', 'ANTINCENDIOTEST'),
+    'username' => env('SQLSRV_USERNAME', 'sa'),
+    'password' => env('SQLSRV_PASSWORD', ''),
     'charset' => 'utf8',
     'prefix' => '',
 
