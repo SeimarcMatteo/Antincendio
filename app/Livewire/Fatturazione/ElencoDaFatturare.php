@@ -122,6 +122,6 @@ class ElencoDaFatturare extends Component
 
     public function render()
     {
-        return view('livewire.fatturazione.elenco-da-fatturare')->layout('layouts.app');;
+        return view('livewire.fatturazione.elenco-da-fatturare')->layout('layouts.app');
     }
 }

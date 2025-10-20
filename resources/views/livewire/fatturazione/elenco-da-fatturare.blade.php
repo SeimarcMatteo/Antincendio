@@ -1,5 +1,5 @@
 {{-- resources/views/livewire/fatturazione/elenco-da-fatturare.blade.php --}}
-<x-app-layout>
+
 <div class="space-y-4">
   <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
     <div>
@@ -111,4 +111,3 @@
     </div>
   @endif
 </div>
-</x-app-layout>
