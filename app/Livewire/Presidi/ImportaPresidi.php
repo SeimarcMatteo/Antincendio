@@ -333,3 +333,30 @@ class ImportaPresidi extends Component
         return view('livewire.presidi.importa-presidi');
     }
 }
+
+private static function nextDueAfter(?string $start, ?int $periodYears, ?Carbon $today = null): ?string
+{
+    if (!$start || !$periodYears || $periodYears <= 0) return null;
+
+    $today = $today ?: now()->startOfDay();
+    $due   = Carbon::parse($start)->addYears($periodYears)->startOfMonth();
+
+    // Se la prima scadenza è nel passato, somma multipli del periodo finché non supera "oggi"
+    while ($due->lte($today)) {
+        $due->addYears($periodYears);
+    }
+    return $due->format('Y-m-d');
+}
+
+private static function pickPeriodoRevisione(?string $dataSerbatoio, $classi): ?int
+{
+    if (!$classi) return null;
+    $cutover = Carbon::create(2024, 8, 31)->endOfDay();
+
+    $base = $dataSerbatoio ? Carbon::parse($dataSerbatoio) : null;
+    // Se vuoi usare SEMPRE il "prima", lascia solo ->anni_revisione_prima
+    if ($base && $base->greaterThan($cutover) && !empty($classi->anni_revisione_dopo)) {
+        return (int) $classi->anni_revisione_dopo;
+    }
+    return (int) $classi->anni_revisione_prima;
+}
