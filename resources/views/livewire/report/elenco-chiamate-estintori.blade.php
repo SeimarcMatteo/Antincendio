@@ -56,7 +56,7 @@
                     <th class="px-4 py-2">🧯 Tipo Estintore</th>
                     <th class="px-4 py-2 text-center">🛠 Revisioni</th>
                     <th class="px-4 py-2 text-center">⚙️ Collaudi</th>
-                    <th class="px-4 py-2 text-center">⛔ Fine Vita</th>
+                    <th class="px-4 py-2 text-center">⛔ Fine Vita ahahah</th>
                     <th class="px-4 py-2 text-center">📦 Totale</th>
                 </tr>
             </thead>
