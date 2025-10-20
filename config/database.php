@@ -99,20 +99,21 @@ return [
 
 'sqlsrv' => [
     'driver' => 'sqlsrv',
-    'host' => '192.168.120.245\BUSINESS',
-    'port' => null//env('DB_SQLSRV_PORT', '50191'),
-    'database' => env('DB_SQLSRV_DATABASE', 'SEIMARCCUBE2'),
-    'username' => env('DB_SQLSRV_USERNAME', 'sa'),
-    'password' => env('DB_SQLSRV_PASSWORD', 'Seimarc2014'),
+    'host' => env('SQLSRV_HOST', '192.168.120.245'),
+    'port' => env('SQLSRV_PORT', '50191'),
+    'database' => env('SQLSRV_DATABASE', 'ANTINCENDIOTEST'),
+    'username' => env('SQLSRV_USERNAME', 'sa'),
+    'password' => env('SQLSRV_PASSWORD', ''),
     'charset' => 'utf8',
     'prefix' => '',
-    'encrypt'  => env('DB_ENCRYPT', 'yes'),
-        'trust_server_certificate' => true,
+
+    // Con ODBC Driver 18: se non usi certificato, o disattivi encrypt o fai trust
+    'encrypt' => env('SQLSRV_ENCRYPT', false),
+    'trust_server_certificate' => env('SQLSRV_TRUST_SERVER_CERTIFICATE', true),
+
     'options' => [
         PDO::SQLSRV_ATTR_ENCODING => PDO::SQLSRV_ENCODING_UTF8,
         PDO::SQLSRV_ATTR_QUERY_TIMEOUT => 10,
-        // 'TrustServerCertificate' => true,
-        // 'Encrypt' => false,
     ],
 ],
 
