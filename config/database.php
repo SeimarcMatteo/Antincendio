@@ -99,8 +99,8 @@ return [
 
 'sqlsrv' => [
     'driver' => 'sqlsrv',
-    'host' => '192.168.120.245\BUSINESS;TrustServerCertificate=true',
-    'port' => env('DB_SQLSRV_PORT', '50191'),
+    'host' => '192.168.120.245\BUSINESS',
+    'port' => null//env('DB_SQLSRV_PORT', '50191'),
     'database' => env('DB_SQLSRV_DATABASE', 'SEIMARCCUBE2'),
     'username' => env('DB_SQLSRV_USERNAME', 'sa'),
     'password' => env('DB_SQLSRV_PASSWORD', 'Seimarc2014'),
