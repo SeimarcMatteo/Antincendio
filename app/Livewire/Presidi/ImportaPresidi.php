@@ -37,6 +37,48 @@ class ImportaPresidi extends Component
         ->toArray();
         $this->caricaPresidiSalvati();
     }
+    private static function normalizzaHeader(string $h): string
+    {
+        $h = mb_strtoupper(trim(preg_replace('/\s+/', ' ', $h)));
+        $map = [
+            'N'                          => 'numero',
+            'N.'                         => 'numero',
+            'UBICAZIONE'                 => 'ubicazione',
+            'TIPO CONTRATTO'             => 'tipo_contratto',
+            'KG/LT'                      => 'kglt',
+            'CLASSE ESTINGUENTE'         => 'classe',
+            'ANNO ACQUISTO FULL'         => 'anno_acquisto',
+            'SCADENZA PRESIDIO FULL'     => 'scadenza_presidio',
+            'ANNO SERBATOIO'             => 'anno_serbatoio',
+            'RIEMPIMENTO/ REVISIONE'     => 'riempimento_revisione',
+            'RIEMPIMENTO/REVISIONE'      => 'riempimento_revisione',
+            'COLLAUDO/ REVISIONE'        => 'collaudo_revisione',
+            'COLLAUDO/REVISIONE'         => 'collaudo_revisione',
+            'A TERRA'                    => 'anomalia_terra',
+            'MANCA CARTELLO'             => 'anomalia_cartello',
+            'NUMERAZ'                    => 'anomalia_numerazione',
+        ];
+        return $map[$h] ?? $h;
+    }
+
+    private static function parseDataCell(?string $txt): ?string
+    {
+        $txt = trim((string)$txt);
+        if ($txt === '') return null;
+
+        // mm.yyyy, m/yyyy, mm-yyyy, m-yyyy
+        if (preg_match('/\b(\d{1,2})\s*[\.\/-]\s*(\d{4})\b/', $txt, $m)) {
+            $mese = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            return Carbon::createFromFormat('Y-m-d', "{$m[2]}-{$mese}-01")->format('Y-m-d');
+        }
+
+        // solo anno
+        if (preg_match('/\b(\d{4})\b/', $txt, $y)) {
+            return Carbon::createFromDate((int)$y[1], 1, 1)->format('Y-m-d');
+        }
+
+        return null;
+    }
 
     private function caricaPresidiSalvati(): void
     {
@@ -81,89 +123,230 @@ class ImportaPresidi extends Component
     /* =================================================
      *                 IMPORT DA .DOCX
      * ===============================================*/
-    public function importa(): void
+   public function importa(): void
     {
         $this->validate(['file' => 'required|file|mimes:docx']);
         if (!$this->file->isValid()) {
             throw new \Exception('Upload non riuscito');
         }
 
-        // carica e parse
-        $path   = Storage::disk('local')->path(
-                    $this->file->store('import_presidi', 'local'));
-        $word   = IOFactory::load($path);
-        $this->anteprima = [];
+        // ---- Util --------------------------------------------------------------
+        $normHeader = function (string $h): string {
+            $h = mb_strtoupper(trim(preg_replace('/\s+/', ' ', $h)));
+            $map = [
+                'N'                          => 'numero',
+                'N.'                         => 'numero',
+                'UBICAZIONE'                 => 'ubicazione',
+                'TIPO CONTRATTO'             => 'tipo_contratto',
+                'KG/LT'                      => 'kglt',
+                'CLASSE ESTINGUENTE'         => 'classe',
+                'ANNO ACQUISTO FULL'         => 'anno_acquisto',
+                'SCADENZA PRESIDIO FULL'     => 'scadenza_presidio',
+                'ANNO SERBATOIO'             => 'anno_serbatoio',
+                'RIEMPIMENTO/ REVISIONE'     => 'riempimento_revisione',
+                'RIEMPIMENTO/REVISIONE'      => 'riempimento_revisione',
+                'COLLAUDO/ REVISIONE'        => 'collaudo_revisione',
+                'COLLAUDO/REVISIONE'         => 'collaudo_revisione',
+                'A TERRA'                    => 'anomalia_terra',
+                'MANCA CARTELLO'             => 'anomalia_cartello',
+                'NUMERAZ'                    => 'anomalia_numerazione',
+            ];
+            return $map[$h] ?? $h;
+        };
+        $parseData = function (?string $txt): ?string {
+            $txt = trim((string)$txt);
+            if ($txt === '') return null;
+            if (preg_match('/\b(\d{1,2})\s*[\.\/-]\s*(\d{4})\b/', $txt, $m)) {
+                $mese = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+                return \Illuminate\Support\Carbon::createFromFormat('Y-m-d', "{$m[2]}-{$mese}-01")->format('Y-m-d');
+            }
+            if (preg_match('/\b(\d{4})\b/', $txt, $y)) {
+                return \Illuminate\Support\Carbon::createFromDate((int)$y[1], 1, 1)->format('Y-m-d');
+            }
+            return null;
+        };
+        $today = now()->startOfMonth();
 
+        // Mesi preferiti cliente (accetta array JSON o CSV "1,3,6,...")
+        $cliente = \App\Models\Cliente::find($this->clienteId);
+        $mesiPref = [];
+        if ($cliente) {
+            $raw = $cliente->mesi_intervento ?? $cliente->mesi ?? null;
+            if (is_string($raw)) {
+                $mesiPref = collect(explode(',', $raw))
+                    ->map(fn($x)=> (int)trim($x))->filter(fn($m)=>$m>=1 && $m<=12)->unique()->values()->all();
+            } elseif (is_array($raw)) {
+                $mesiPref = collect($raw)->map(fn($m)=>(int)$m)->filter(fn($m)=>$m>=1 && $m<=12)->unique()->values()->all();
+            }
+        }
+
+        // Allinea ad uno dei mesi preferiti: il mese immediatamente precedente la scadenza,
+        // ma non prima dell'oggi. Se nessun mese valido nel range, prende il primo >= oggi.
+        $alignToPreferred = function (?string $due, array $months) use ($today): ?string {
+            if (!$due) return null;
+            $dueC   = \Illuminate\Support\Carbon::parse($due)->startOfMonth();
+            $start  = $today->copy();
+
+            // senza preferenze: prendo il mese prima della scadenza, ma >= oggi
+            if (!count($months)) {
+                $cand = $dueC->copy()->subMonth();
+                if ($cand->lt($start)) $cand = $start;
+                return $cand->format('Y-m-d');
+            }
+
+            // cerca l'ultimo mese preferito in [oggi, scadenza) (strettamente prima della scadenza)
+            $candidates = [];
+            $cur = $start->copy();
+            while ($cur->lt($dueC) || $cur->equalTo($dueC)) {
+                if ((int)$cur->month === (int)$dueC->month && (int)$cur->year === (int)$dueC->year) {
+                    // non includere la scadenza stessa: "subito prima"
+                    break;
+                }
+                if (in_array((int)$cur->month, $months, true)) {
+                    $candidates[] = $cur->copy();
+                }
+                $cur->addMonth();
+            }
+            if ($candidates) {
+                return end($candidates)->format('Y-m-d');
+            }
+
+            // nessun mese preferito nel range: scegli il primo mese preferito >= oggi (entro 24 mesi)
+            $cur = $start->copy();
+            for ($i=0; $i<24; $i++) {
+                if (in_array((int)$cur->month, $months, true)) {
+                    return $cur->format('Y-m-d');
+                }
+                $cur->addMonth();
+            }
+            return $start->format('Y-m-d');
+        };
+        // -----------------------------------------------------------------------
+
+        // carica e parse
+        $path = Storage::disk('local')->path($this->file->store('import_presidi', 'local'));
+        $word = IOFactory::load($path);
+
+        $this->anteprima = [];
         foreach ($word->getSections() as $section) {
             foreach ($section->getElements() as $element) {
-                if (!$element instanceof Table) continue;
+                if (!$element instanceof \PhpOffice\PhpWord\Element\Table) continue;
+
+                $headersMap = null;
 
                 foreach ($element->getRows() as $row) {
                     $cells = $row->getCells();
-                    if (count($cells) < 4) continue;
+                    if (!count($cells)) continue;
 
-                    // celle principali
-                    $c0 = self::cellText($cells[0]);
-                    $c1 = self::cellText($cells[1]);
-                    $c2 = self::cellText($cells[2]);
-                    $c3 = self::cellText($cells[3]);
+                    $vals = array_map(fn($c) => self::cellText($c), $cells);
 
-                    if (!is_numeric($c0) || !$c2) continue;  // non è riga presidio
-
-                    // tipo estintore & classificazione
-                    preg_match('/(\d+)\s*kg/i', $c3, $mKg);
-                    $kg       = $mKg[1] ?? null;
-                    $tipoEst  = $kg
-                        ? TipoEstintore::where('kg', $kg)
-                              ->where('descrizione', 'like', '%Polv%')->first()
-                        : null;
-                    $classi   = $tipoEst?->classificazione;
-
-                    // date
-                    $dateChunks = array_map(fn($c) => self::cellText($c),
-                                            array_slice($cells, 4));
-                    $dates      = self::estraiDateDaArray($dateChunks, 2);
-                    $dataSerb   = $dates[0] ?? null;
-                    $dataColl   = $dates[1] ?? null;
-
-                    // flag anomalie
-                    $joined     = collect($cells)->reduce(
-                        fn($agg, $c) => $agg.' '.self::cellText($c), '');
-
-                        $periodoRev = self::pickPeriodoRevisione($dataSerb, $classi);
-                        $dataRevisione = self::nextDueAfter($dataSerb, $periodoRev); // <-- roll forward
-                        
-                        // Collaudo (solo se definito per la classificazione)
-                        $dataCollaudo = null;
-                        if (!empty($classi?->anni_collaudo)) {
-                            $dataCollaudo = self::nextDueAfter($dataSerb, (int) $classi->anni_collaudo);
+                    // riconosci header
+                    if ($headersMap === null) {
+                        $score = 0;
+                        foreach ($vals as $v) {
+                            $hv = $normHeader($v);
+                            if (in_array($hv, [
+                                'numero','ubicazione','tipo_contratto','kglt','classe',
+                                'anno_acquisto','scadenza_presidio','anno_serbatoio',
+                                'riempimento_revisione','collaudo_revisione'
+                            ], true)) $score++;
                         }
-                        
-                        // Fine vita: NON si “rolla”; è una data assoluta
-                        $dataFineVita = self::addYears($dataSerb, $classi?->anni_fine_vita);
-                        
-                        $this->anteprima[] = [
-                            'categoria'         => 'Estintore',
-                            'progressivo'       => (int)$c0,
-                            'ubicazione'        => $c1,
-                            'tipo_contratto'    => $c2,
-                            'tipo_estintore'    => $c3,
-                            'tipo_estintore_id' => $tipoEst?->id,
-                            'data_serbatoio'    => $dataSerb,
-                            'data_revisione'    => $dataRevisione,
-                            'data_collaudo'     => $dataCollaudo,
-                            'data_fine_vita'    => $dataFineVita,
-                            'data_sostituzione' => null, // la calcoleremo dopo come min(...) se ti serve già ora
-                            'flag_anomalia1'    => str_contains($joined, 'CARTELLO'),
-                            'flag_anomalia2'    => str_contains($joined, 'TERRA'),
-                            'flag_anomalia3'    => str_contains($joined, 'NUMERAZ'),
-                            'note'              => null,
-                        ];
-                        
+                        if ($score >= 3) {
+                            $headersMap = [];
+                            foreach ($vals as $i => $v) $headersMap[$i] = $normHeader($v);
+                            continue;
+                        }
+                    }
+                    if ($headersMap === null) continue;
+
+                    // mappa riga -> chiave
+                    $r = [];
+                    foreach ($vals as $i => $v) {
+                        $k = $headersMap[$i] ?? "col_$i";
+                        $r[$k] = $v;
+                    }
+
+                    // must-have: numero + almeno ubicazione/contratto
+                    $numero = $r['numero'] ?? null;
+                    if (!is_numeric($numero)) continue;
+
+                    $ubic      = $r['ubicazione']      ?? '';
+                    $contratto = $r['tipo_contratto']   ?? '';
+                    $tipoRaw   = ($r['kglt'] ?? '') ?: ($r['classe'] ?? '');
+
+                    // tipo estintore & kg
+                    preg_match('/(\d+)\s*kg/i', $tipoRaw, $mKg);
+                    $kg      = $mKg[1] ?? null;
+                    $tipoEst = $kg
+                        ? \App\Models\TipoEstintore::where('kg', $kg)
+                            ->where('descrizione', 'like', '%Polv%')->first()
+                        : null;
+                    $classi  = $tipoEst?->classificazione;
+
+                    // date specifiche
+                    $dataAcquisto     = $parseData($r['anno_acquisto']     ?? null);
+                    $scadPresidio     = $parseData($r['scadenza_presidio'] ?? null);
+                    $dataSerb         = $parseData($r['anno_serbatoio']    ?? null);
+                    $lastRiempOrRev   = $parseData($r['riempimento_revisione'] ?? null);   // info, non usata nel calcolo
+                    $lastCollaudoRev  = $parseData($r['collaudo_revisione']   ?? null);   // info, non usata nel calcolo
+
+                    // calcoli da serbatoio
+                    $periodoRev    = self::pickPeriodoRevisione($dataSerb, $classi);
+                    $scadRevisione = self::nextDueAfter($dataSerb, $periodoRev);
+                    $scadCollaudo  = !empty($classi?->anni_collaudo)
+                                    ? self::nextDueAfter($dataSerb, (int)$classi->anni_collaudo)
+                                    : null;
+                    $fineVita      = self::addYears($dataSerb, $classi?->anni_fine_vita);
+
+                    // allineamento ai mesi preferiti (revisione/collaudo)
+                    $revAligned = $alignToPreferred($scadRevisione, $mesiPref);
+                    $colAligned = $alignToPreferred($scadCollaudo,  $mesiPref);
+
+                    // scadenza “capolinea” per sostituzione (min di tutte le scadenze note)
+                    $scadenzaAssoluta = self::minDate($scadRevisione, $scadCollaudo, $fineVita, $scadPresidio);
+                    // data operativa (mese prima, ma non prima di oggi) rispettando i mesi preferiti
+                    $dataSostituzione = $alignToPreferred($scadenzaAssoluta, $mesiPref);
+
+                    // anomalie (scan testo riga)
+                    $joinedUp = mb_strtoupper(implode(' ', $vals));
+                    $flag1 = str_contains($joinedUp, 'CARTELLO');
+                    $flag2 = str_contains($joinedUp, 'TERRA');
+                    $flag3 = str_contains($joinedUp, 'NUMERAZ');
+
+                    $this->anteprima[] = [
+                        'categoria'         => 'Estintore',
+                        'progressivo'       => (int)$numero,
+                        'ubicazione'        => $ubic,
+                        'tipo_contratto'    => $contratto,
+                        'tipo_estintore'    => $tipoRaw,
+                        'tipo_estintore_id' => $tipoEst?->id,
+
+                        // NUOVI
+                        'data_acquisto'     => $dataAcquisto,
+                        'scadenza_presidio' => $scadPresidio,
+
+                        // SERBATOIO-BASED
+                        'data_serbatoio'    => $dataSerb,
+
+                        // Scadenze “teoriche”
+                        'data_revisione'    => $revAligned ?: $scadRevisione,
+                        'data_collaudo'     => $colAligned ?: $scadCollaudo,
+                        'data_fine_vita'    => $fineVita,
+
+                        // Operativa (mese prima della scadenza MIN, rispettando mesi preferiti)
+                        'data_sostituzione' => $dataSostituzione,
+
+                        // Anomalie
+                        'flag_anomalia1'    => $flag1,
+                        'flag_anomalia2'    => $flag2,
+                        'flag_anomalia3'    => $flag3,
+                        'note'              => null,
+                    ];
                 }
             }
         }
     }
+
 
     /* ----------------- CONFERMA ANTEPRIMA ---------------- */
     public function conferma(): void
