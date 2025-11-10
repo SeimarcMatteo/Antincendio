@@ -14,75 +14,80 @@
         @endif
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div><span class="font-semibold text-gray-700">Codice esterno:</span><div class="text-gray-900">{{ $cliente->codice_esterno }}</div></div>
-            <div><span class="font-semibold text-gray-700">Partita IVA:</span><div class="text-gray-900">{{ $cliente->p_iva ?? '—' }}</div></div>
-            <div class="sm:col-span-2"><span class="font-semibold text-gray-700">Ragione sociale:</span><div class="text-gray-900">{{ $cliente->nome }}</div></div>
-            <div><span class="font-semibold text-gray-700">Telefono:</span>
-                <div>
-                    @if ($cliente->telefono)
-                        <a href="tel:{{ preg_replace('/\s+/', '', $cliente->telefono) }}" class="text-red-600 hover:underline">
-                           <i class="fa fa-phone-alt mr-1"></i>{{ $cliente->telefono }}
-                        </a>
-                    @else
-                        <span class="text-gray-500">—</span>
-                    @endif
-                </div>
-            </div>
-            <div><span class="font-semibold text-gray-700">Email:</span>
-                <div>
-                    @if ($cliente->email)
-                        <a href="mailto:{{ $cliente->email }}" class="text-red-600 hover:underline">
-                           <i class="fa fa-envelope mr-1"></i>{{ $cliente->email }}
-                        </a>
-                    @else
-                        <span class="text-gray-500">—</span>
-                    @endif
-                </div>
-            </div>
-            <div><span class="font-semibold text-gray-700">Indirizzo:</span>
-                <div>
-                    @if ($cliente->indirizzo)
-                        <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($cliente->indirizzo . ', ' . $cliente->cap . ' ' . $cliente->citta . ' ' . $cliente->provincia) }}" target="_blank" class="text-red-600 hover:underline">
-                            <i class="fa fa-map-marker-alt mr-1"></i>
-                            {{ $cliente->indirizzo }} - {{ $cliente->cap }} {{ $cliente->citta }} ({{ $cliente->provincia }})
-                        </a>
-                    @else
-                        <span class="text-gray-500">—</span>
-                    @endif
-                </div>
+    {{-- SX --}}
+    <div>
+        <span class="font-semibold text-gray-700">Codice esterno:</span>
+        <div class="text-gray-900">{{ $cliente->codice_esterno }}</div>
+    </div>
+
+    {{-- DX --}}
+    <div>
+        <span class="font-semibold text-gray-700">Partita IVA:</span>
+        <div class="text-gray-900">{{ $cliente->p_iva ?? '—' }}</div>
+    </div>
+
+    <div class="sm:col-span-2">
+        <span class="font-semibold text-gray-700">Ragione sociale:</span>
+        <div class="text-gray-900">{{ $cliente->nome }}</div>
+    </div>
+
+    {{-- SX --}}
+    <div>
+        <span class="font-semibold text-gray-700">Telefono:</span>
+        <div>
+            @if ($cliente->telefono)
+                <a href="tel:{{ preg_replace('/\s+/', '', $cliente->telefono) }}" class="text-red-600 hover:underline">
+                    <i class="fa fa-phone-alt mr-1"></i>{{ $cliente->telefono }}
+                </a>
+            @else
+                <span class="text-gray-500">—</span>
+            @endif
         </div>
-        <div class="mt-6 border-t pt-4">
-            <h3 class="text-md font-semibold text-red-600 mb-2">Note</h3>
+    </div>
 
-            <label class="block text-sm text-gray-700 mb-1">
-                Annotazioni interne sul cliente 
-            </label>
+    {{-- DX --}}
+    <div>
+        <span class="font-semibold text-gray-700">Email:</span>
+        <div>
+            @if ($cliente->email)
+                <a href="mailto:{{ $cliente->email }}" class="text-red-600 hover:underline">
+                    <i class="fa fa-envelope mr-1"></i>{{ $cliente->email }}
+                </a>
+            @else
+                <span class="text-gray-500">—</span>
+            @endif
+        </div>
+    </div>
 
-            <textarea
-                wire:model.defer="note"
-                rows="5"
-                class="textarea textarea-bordered w-full"
-                placeholder="Inserisci qui eventuali note operative..."></textarea>
+    {{-- DX (nuovo blocco, resta nella colonna destra mantenendo le 2 colonne) --}}
+    <div class="sm:col-start-2">
+        <label class="font-semibold text-gray-700">Zona</label>
+        <div class="mt-1 flex items-center gap-2">
+            <input
+                list="zone-list"
+                wire:model.defer="zonaInput"
+                class="input input-bordered w-56"
+                placeholder="Seleziona o scrivi…">
+            <datalist id="zone-list">
+                @foreach($zoneSuggestions as $z)
+                    <option value="{{ $z }}"></option>
+                @endforeach
+            </datalist>
 
-            @error('note')
-                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-            @enderror
-
-            <div class="mt-2 flex items-center justify-between text-xs text-gray-500">
-                <span>
-                    @if($cliente->note)
-                        Ultimo valore salvato mostrato sopra.
-                    @else
-                        Nessuna nota salvata.
-                    @endif
-                </span>
-                <span>{{ strlen($note ?? '') }}/5000</span>
-            </div>
-
-            <button wire:click="salvaNote" class="btn btn-primary mt-3">
-                💾 Salva note
+            <button wire:click="salvaZona" class="btn btn-primary btn-sm">
+                💾 Salva
             </button>
         </div>
+
+        {{-- opzionale: mostrina stato attuale --}}
+        <div class="text-xs text-gray-500 mt-1">
+            Attuale: <span class="font-medium">{{ $cliente->zona ?? '—' }}</span>
+        </div>
+        {{-- opzionale: nota comportamento sedi --}}
+        {{-- <div class="text-[11px] text-gray-400 mt-0.5">Compila anche le sedi con zona vuota.</div> --}}
+    </div>
+</div>
+
 
         <div class="mt-4">
             <button wire:click="vaiAiPresidi" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
@@ -98,72 +103,17 @@
             </span>
                 <button wire:click="toggleMesiVisibili('cliente')" class="btn btn-sm btn-warning">✏️ Mesi</button>
             </div>
-            {{-- ... blocco mesi cliente già presente ... --}}
-
-@if($modificaMesiVisibile['cliente'] ?? false)
-    <div class="grid grid-cols-6 gap-2 mt-2">
-        @for($i = 1; $i <= 12; $i++)
-            <label class="inline-flex items-center">
-                <input type="checkbox"
-                       wire:model.live="modificaMesi.cliente.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}"
-                       class="mr-1">
-                {{ Date::create()->month($i)->format('M') }}
-            </label>
-        @endfor
-    </div>
-
-    <div class="flex items-center gap-2 mt-2">
-        <button wire:click="salvaMesi" class="btn btn-xs btn-primary">💾 Salva mesi</button>
-    </div>
-@endif
-    {{-- 🔽 NEW: mostra i campi minuti solo se c'è almeno 1 mese selezionato --}}
-    @if (!empty($mesiClienteSelezionati))
-        <div class="mt-4 p-3 bg-gray-50 rounded border">
-            <h4 class="text-sm font-semibold mb-2">Minuti per visita</h4>
-
-            {{-- Etichetta dinamica in base al mese selezionato --}}
-            @php
-                $mese1 = $mesiClienteSelezionati[0] ?? null;   // es. 3
-                $mese2 = $mesiClienteSelezionati[1] ?? null;   // es. 9
-            @endphp
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs text-gray-600">
-                        Minuti 1ª visita
-                        @if($mese1)
-                            ({{ Date::create()->month($mese1)->format('F') }})
-                        @endif
-                    </label>
-                    <input type="number" min="0" max="1440"
-                           wire:model.defer="minuti_mese1"
-                           class="input input-bordered w-full mt-1"
-                           placeholder="Es. 60">
-                    @error('minuti_mese1') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                @if($mese2)
-                    <div>
-                        <label class="block text-xs text-gray-600">
-                            Minuti 2ª visita
-                            ({{ Date::create()->month($mese2)->format('F') }})
+            @if($modificaMesiVisibile['cliente'] ?? false)
+                <div class="grid grid-cols-6 gap-2 mt-2">
+                    @for($i = 1; $i <= 12; $i++)
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" wire:model.defer="modificaMesi.cliente.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" class="mr-1">
+                            {{ Date::create()->month($i)->format('M') }}
                         </label>
-                        <input type="number" min="0" max="1440"
-                               wire:model.defer="minuti_mese2"
-                               class="input input-bordered w-full mt-1"
-                               placeholder="Es. 45">
-                        @error('minuti_mese2') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-                    </div>
-                @endif
-            </div>
-
-            <button wire:click="salvaMinutiCliente" class="btn btn-sm btn-success mt-3">
-                💾 Salva minuti visita
-            </button>
-        </div>
-    @endif
-
-
+                    @endfor
+                </div>
+                <button wire:click="salvaMesi" class="btn btn-xs btn-primary mt-2">💾 Salva mesi</button>
+            @endif
         </div>
         <div class="mt-6 border-t pt-4">
             <h3 class="text-md font-semibold text-red-600 mb-2">Fatturazione</h3>
@@ -232,7 +182,7 @@
                                 <div class="grid grid-cols-6 gap-2 mt-2">
                                     @for($i = 1; $i <= 12; $i++)
                                         <label class="inline-flex items-center">
-                                            <input type="checkbox" wire:model.live="modificaMesi.{{ $sede->id }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" class="mr-1">
+                                            <input type="checkbox" wire:model.defer="modificaMesi.{{ $sede->id }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" class="mr-1">
                                             {{ Date::create()->month($i)->format('M') }}
                                         </label>
                                     @endfor
