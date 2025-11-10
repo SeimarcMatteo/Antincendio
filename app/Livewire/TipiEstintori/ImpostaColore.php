@@ -1,5 +1,5 @@
 <?php
-
+// app/Livewire/TipiEstintori/ImpostaColore.php
 namespace App\Livewire\TipiEstintori;
 
 use Livewire\Component;
@@ -22,7 +22,8 @@ class ImpostaColore extends Component
     public function mount(): void
     {
         $this->colori   = Colore::orderBy('nome')->get();
-        $this->hexById  = $this->colori->pluck('hex', 'id')->toArray();
+        // ⚠️ usa il nome giusto della colonna
+        $this->hexById  = $this->colori->pluck('codice_hex', 'id')->toArray();
         $this->nomeById = $this->colori->pluck('nome', 'id')->toArray();
 
         $this->tipi = TipoEstintore::with('colore')
@@ -37,7 +38,6 @@ class ImpostaColore extends Component
     /** Salva subito e aggiorna la UI */
     public function setColore(int $tipoId, ?int $coloreId): void
     {
-        // debug: controlla nei log se viene richiamato
         logger('[ImpostaColore] setColore', ['tipoId' => $tipoId, 'coloreId' => $coloreId]);
 
         $coloreId = $coloreId ?: null;
@@ -47,7 +47,7 @@ class ImpostaColore extends Component
             $tipo->colore_id = $coloreId;
             $tipo->save();
 
-            // aggiorna la collection in memoria
+            // refresh in memoria (non strettamente necessario, ma comodo)
             $idx = $this->tipi->search(fn ($x) => (int)$x->id === (int)$tipoId);
             if ($idx !== false) {
                 $t = $this->tipi[$idx];
@@ -58,8 +58,7 @@ class ImpostaColore extends Component
         }
 
         $this->originali[$tipoId] = $coloreId;
-        // opzionale: piccolo feedback
-         $this->dispatch('notify', body: 'Colore aggiornato');
+        $this->dispatch('notify', body: 'Colore aggiornato');
     }
 
     public function render()

@@ -1,3 +1,4 @@
+{{-- resources/views/livewire/tipi-estintori/imposta-colore.blade.php --}}
 <div class="space-y-4">
   <h2 class="text-xl font-semibold">Colore per tipologia estintore</h2>
 
@@ -54,11 +55,12 @@
                   <div class="border-t my-1"></div>
 
                   @foreach($colori as $c)
+                    @php $cHex = $c->codice_hex ?? '#9CA3AF'; @endphp
                     <button type="button"
                             class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
                             @click="$wire.setColore({{ $t->id }}, {{ $c->id }}); open=false">
                       <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10"
-                            style="background-color: {{ $c->hex }}"></span>
+                            style="background-color: {{ $cHex }}"></span>
                       <span>{{ $c->nome }}</span>
                     </button>
                   @endforeach

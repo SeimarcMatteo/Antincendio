@@ -14,4 +14,11 @@ class Colore extends Model
         if (!str_starts_with($v, '#')) $v = '#'.$v;
         $this->attributes['hex'] = substr($v, 0, 7);
     }
+
+    // app/Models/Colore.php
+    public function getHexAttribute(): ?string
+    {
+        return $this->codice_hex;
+    }
+
 }
