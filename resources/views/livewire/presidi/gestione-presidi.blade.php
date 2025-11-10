@@ -128,7 +128,10 @@
                         </td>
 
                         @if($isEst)
+
                             {{-- Tipo Estintore --}}
+                            
+
                             <td class="px-2 py-1">
                                 @if($presidio->id === $presidioInModifica)
                                     <select wire:model.defer="presidiData.{{ $presidio->id }}.tipo_estintore_id"
@@ -140,6 +143,12 @@
                                         @endforeach
                                     </select>
                                 @else
+                                    @php $hex = $presidio->tipo?->colore?->hex ?? '#9CA3AF'; @endphp
+                                    <div class="flex items-center gap-2">
+                                    <span class="inline-block w-3 h-3 rounded-full ring-1 ring-black/10"
+                                            style="background-color: {{ $hex }}"></span>
+                                    <span class="text-xs text-gray-600">{{ $presidio->tipo?->sigla }}</span>
+                                    </div>
                                     {{ optional($presidio->tipoEstintore)->sigla }}
                                 @endif
                             </td>
