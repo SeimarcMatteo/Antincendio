@@ -19,6 +19,7 @@
             $coloreId = $selezioni[$t->id] ?? null;
             $hex  = $coloreId ? ($hexById[$coloreId]  ?? '#9CA3AF') : '#9CA3AF';
             $nome = $coloreId ? ($nomeById[$coloreId] ?? '—')       : '—';
+            $nessunoSelezionato = is_null($coloreId);
           @endphp
 
           <tr wire:key="tipo-{{ $t->id }}" style="border-left: 6px solid {{ $hex }};">
@@ -45,21 +46,28 @@
 
                   {{-- Nessuno --}}
                   <button type="button"
-                          class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-                          @click="$wire.setColore({{ $t->id }}, null); open=false">
+                          class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 @if($nessunoSelezionato) bg-gray-100 font-medium @endif"
+                          @click.prevent="$wire.call('setColore', {{ $t->id }}, null); open=false">
                     <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10 bg-gray-300"></span>
                     <span>— nessuno —</span>
+                    @if($nessunoSelezionato)
+                      <span class="ml-auto text-xs uppercase tracking-wide text-gray-500">Selezionato</span>
+                    @endif
                   </button>
 
                   <div class="border-t my-1"></div>
 
                   @foreach($colori as $c)
+                    @php $isSelected = (int)$coloreId === (int)$c->id; @endphp
                     <button type="button"
-                            class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-                            @click="$wire.setColore({{ $t->id }}, {{ $c->id }}); open=false">
+                            class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 @if($isSelected) bg-gray-100 font-medium @endif"
+                            @click.prevent="$wire.call('setColore', {{ $t->id }}, {{ $c->id }}); open=false">
                       <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10"
                             style="background-color: {{ $c->hex }}"></span>
                       <span>{{ $c->nome }}</span>
+                      @if($isSelected)
+                        <span class="ml-auto text-xs uppercase tracking-wide text-gray-500">Selezionato</span>
+                      @endif
                     </button>
                   @endforeach
                 </div>
