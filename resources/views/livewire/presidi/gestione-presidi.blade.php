@@ -1,5 +1,3 @@
-@php use Illuminate\Support\Str; @endphp
-
 <div class="p-6 max-w-7xl mx-auto bg-white shadow rounded-lg">
 
     {{-- =================== DATI CLIENTE =================== --}}
@@ -36,8 +34,9 @@
     <div class="mb-4 overflow-x-auto">
         <div class="flex flex-wrap gap-2">
             @foreach(['Estintore', 'Idrante', 'Porta'] as $cat)
-                <button wire:click="selezionaCategoria('{{ $cat }}')"
-                        class="px-4 py-2 rounded {{ $categoriaAttiva === $cat ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                <button
+                    wire:click="selezionaCategoria('{{ $cat }}')"
+                    class="px-4 py-2 rounded {{ $categoriaAttiva === $cat ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
                     {{ $cat }}{{ $categoriaAttiva === $cat ? ' (attiva)' : '' }}
                 </button>
             @endforeach
@@ -49,254 +48,250 @@
         <div class="text-gray-500 italic">Nessun presidio registrato per questa categoria.</div>
     @else
         <div class="overflow-x-auto mb-6">
-        @php($isEst = $categoriaAttiva === 'Estintore')
+            @php
+                $isEst = ($categoriaAttiva === 'Estintore');
+            @endphp
 
-        <table class="w-full table-auto text-sm text-gray-800 border border-gray-300 shadow-sm rounded-lg">
-            <colgroup>
-                <col style="width:70px">      {{-- # --}}
-                <col>                         {{-- Ubicazione (auto) --}}
-                <col style="width:160px">     {{-- Tipo Contratto --}}
-                @if($isEst)
-                    <col style="width:200px"> {{-- Tipo Estintore --}}
-                    <col style="width:220px"> {{-- Note --}}
-                    <col style="width:130px"> {{-- Acquisto --}}
-                    <col style="width:150px"> {{-- Scadenza Presidio --}}
-                    <col style="width:130px"> {{-- Serbatoio --}}
-                    <col style="width:130px"> {{-- Revisione --}}
-                    <col style="width:130px"> {{-- Collaudo --}}
-                    <col style="width:130px"> {{-- Fine Vita --}}
-                    <col style="width:140px"> {{-- Sostituzione --}}
-                    <col style="width:110px"> {{-- Preventivo --}}
-                    <col style="width:110px"> {{-- Azioni --}}
-                @else
-                    <col style="width:220px"> {{-- Note --}}
-                    <col style="width:110px"> {{-- Azioni --}}
-                @endif
-            </colgroup>
-
-            <thead class="bg-red-600 text-white text-left">
-                <tr class="whitespace-nowrap">
-                    <th class="px-2 py-1">#</th>
-                    <th class="px-2 py-1">Ubicazione</th>
-                    <th class="px-2 py-1">Tipo Contratto</th>
-
+            <table class="w-full table-auto text-sm text-gray-800 border border-gray-300 shadow-sm rounded-lg">
+                <colgroup>
+                    <col style="width:70px">      {{-- # --}}
+                    <col>                         {{-- Ubicazione --}}
+                    <col style="width:160px">     {{-- Tipo Contratto --}}
                     @if($isEst)
-                        <th class="px-2 py-1">Tipo Estintore</th>
-                        <th class="px-2 py-1">Note</th>
-                        <th class="px-2 py-1">Acquisto</th>
-                        <th class="px-2 py-1">Scadenza Presidio</th>
-                        <th class="px-2 py-1">Serbatoio</th>
-                        <th class="px-2 py-1">Revisione</th>
-                        <th class="px-2 py-1">Collaudo</th>
-                        <th class="px-2 py-1">Fine Vita</th>
-                        <th class="px-2 py-1">Sostituzione</th>
-                        <th class="px-2 py-1">Preventivo</th>
-                        <th class="px-2 py-1 text-center">Azioni</th>
+                        <col style="width:200px"> {{-- Tipo Estintore --}}
+                        <col style="width:220px"> {{-- Note --}}
+                        <col style="width:130px"> {{-- Acquisto --}}
+                        <col style="width:150px"> {{-- Scadenza Presidio --}}
+                        <col style="width:130px"> {{-- Serbatoio --}}
+                        <col style="width:130px"> {{-- Revisione --}}
+                        <col style="width:130px"> {{-- Collaudo --}}
+                        <col style="width:130px"> {{-- Fine Vita --}}
+                        <col style="width:140px"> {{-- Sostituzione --}}
+                        <col style="width:110px"> {{-- Preventivo --}}
+                        <col style="width:110px"> {{-- Azioni --}}
                     @else
-                        <th class="px-2 py-1">Note</th>
-                        <th class="px-2 py-1 text-center">Azioni</th>
+                        <col style="width:220px"> {{-- Note --}}
+                        <col style="width:110px"> {{-- Azioni --}}
                     @endif
-                </tr>
-            </thead>
+                </colgroup>
 
-            <tbody>
-                @foreach($presidi as $index => $presidio)
-                    <tr class="even:bg-gray-50 align-middle">
-                        {{-- # --}}
-                        <td class="px-2 py-1 font-semibold text-center">{{ $presidio->progressivo }}</td>
-
-                        {{-- Ubicazione --}}
-                        <td class="px-2 py-1">
-                            @if($presidio->id === $presidioInModifica)
-                                <input type="text"
-                                    wire:model.defer="presidiData.{{ $presidio->id }}.ubicazione"
-                                    class="form-input w-full rounded-md border-gray-300 focus:border-red-500 focus:ring focus:ring-red-200 text-sm" />
-                            @else
-                                {{ $presidio->ubicazione }}
-                            @endif
-                        </td>
-
-                        {{-- Tipo Contratto --}}
-                        <td class="px-2 py-1">
-                            @if($presidio->id === $presidioInModifica)
-                                <input type="text"
-                                    wire:model.defer="presidiData.{{ $presidio->id }}.tipo_contratto"
-                                    class="form-input w-full rounded-md border-gray-300 focus:border-red-500 focus:ring focus:ring-red-200 text-sm" />
-                            @else
-                                {{ $presidio->tipo_contratto }}
-                            @endif
-                        </td>
+                <thead class="bg-red-600 text-white text-left">
+                    <tr class="whitespace-nowrap">
+                        <th class="px-2 py-1">#</th>
+                        <th class="px-2 py-1">Ubicazione</th>
+                        <th class="px-2 py-1">Tipo Contratto</th>
 
                         @if($isEst)
+                            <th class="px-2 py-1">Tipo Estintore</th>
+                            <th class="px-2 py-1">Note</th>
+                            <th class="px-2 py-1">Acquisto</th>
+                            <th class="px-2 py-1">Scadenza Presidio</th>
+                            <th class="px-2 py-1">Serbatoio</th>
+                            <th class="px-2 py-1">Revisione</th>
+                            <th class="px-2 py-1">Collaudo</th>
+                            <th class="px-2 py-1">Fine Vita</th>
+                            <th class="px-2 py-1">Sostituzione</th>
+                            <th class="px-2 py-1">Preventivo</th>
+                            <th class="px-2 py-1 text-center">Azioni</th>
+                        @else
+                            <th class="px-2 py-1">Note</th>
+                            <th class="px-2 py-1 text-center">Azioni</th>
+                        @endif
+                    </tr>
+                </thead>
 
-                            {{-- Tipo Estintore --}}
-                            
+                <tbody>
+                    @foreach($presidi as $index => $presidio)
+                        <tr class="even:bg-gray-50 align-middle">
+                            {{-- # --}}
+                            <td class="px-2 py-1 font-semibold text-center">{{ $presidio->progressivo }}</td>
 
-                            <td class="px-2 py-1">
-                                @if($presidio->id === $presidioInModifica)
-                                    <select wire:model.defer="presidiData.{{ $presidio->id }}.tipo_estintore_id"
-                                            wire:change="ricalcolaDate({{ $presidio->id }})"
-                                            class="form-select text-xs w-full">
-                                        <option value="">-- scegli --</option>
-                                        @foreach($tipiEstintori as $tipo)
-                                            <option value="{{ $tipo->id }}">{{ $tipo->sigla }} - {{ $tipo->descrizione }}</option>
-                                        @endforeach
-                                    </select>
-                                @else
-                                    @php $hex = $presidio->tipo?->colore?->hex ?? '#9CA3AF'; @endphp
-                                    <div class="flex items-center gap-2">
-                                    <span class="inline-block w-3 h-3 rounded-full ring-1 ring-black/10"
-                                            style="background-color: {{ $hex }}"></span>
-                                    <span class="text-xs text-gray-600">{{ $presidio->tipo?->sigla }}</span>
-                                    </div>
-                                    {{ optional($presidio->tipoEstintore)->sigla }}
-                                @endif
-                            </td>
-
-                            {{-- Note --}}
+                            {{-- Ubicazione --}}
                             <td class="px-2 py-1">
                                 @if($presidio->id === $presidioInModifica)
                                     <input type="text"
-                                        wire:model.defer="presidiData.{{ $presidio->id }}.note"
+                                        wire:model.defer="presidiData.{{ $presidio->id }}.ubicazione"
                                         class="form-input w-full rounded-md border-gray-300 focus:border-red-500 focus:ring focus:ring-red-200 text-sm" />
                                 @else
-                                    {{ $presidio->note }}
+                                    {{ $presidio->ubicazione }}
                                 @endif
                             </td>
 
-                            {{-- Acquisto --}}
+                            {{-- Tipo Contratto --}}
                             <td class="px-2 py-1">
                                 @if($presidio->id === $presidioInModifica)
-                                    <input type="date"
-                                        wire:model.defer="presidiData.{{ $presidio->id }}.data_acquisto"
-                                        wire:change="ricalcolaDate({{ $presidio->id }})"
-                                        class="form-input w-full rounded-md border-gray-300 text-sm" />
+                                    <input type="text"
+                                        wire:model.defer="presidiData.{{ $presidio->id }}.tipo_contratto"
+                                        class="form-input w-full rounded-md border-gray-300 focus:border-red-500 focus:ring focus:ring-red-200 text-sm" />
                                 @else
-                                    <span class="inline-block min-w-[110px]">
-                                        {{ $presidio->data_acquisto ? \Carbon\Carbon::parse($presidio->data_acquisto)->format('d.m.Y') : '' }}
-                                    </span>
+                                    {{ $presidio->tipo_contratto }}
                                 @endif
                             </td>
 
-                            {{-- Scadenza Presidio --}}
-                            <td class="px-2 py-1">
-                                @if($presidio->id === $presidioInModifica)
-                                    <input type="date"
-                                        wire:model.defer="presidiData.{{ $presidio->id }}.scadenza_presidio"
-                                        class="form-input w-full rounded-md border-gray-300 text-sm" />
-                                @else
-                                    <span class="inline-block min-w-[120px]">
-                                        {{ $presidio->scadenza_presidio ? \Carbon\Carbon::parse($presidio->scadenza_presidio)->format('d.m.Y') : '' }}
-                                    </span>
-                                @endif
-                            </td>
+                            @if($isEst)
+                                {{-- Tipo Estintore --}}
+                                <td class="px-2 py-1">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <select
+                                            wire:model.defer="presidiData.{{ $presidio->id }}.tipo_estintore_id"
+                                            wire:change="ricalcolaDate({{ $presidio->id }})"
+                                            class="form-select text-xs w-full">
+                                            <option value="">-- scegli --</option>
+                                            @foreach($tipiEstintori as $tipo)
+                                                <option value="{{ $tipo->id }}">{{ $tipo->sigla }} - {{ $tipo->descrizione }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        @php
+                                            $hex   = $presidio->tipo?->colore?->hex ?? '#9CA3AF';
+                                            $sigla = $presidio->tipo?->sigla ?? optional($presidio->tipoEstintore)->sigla ?? '';
+                                        @endphp
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-block w-3 h-3 rounded-full ring-1 ring-black/10"
+                                                  style="background-color: {{ $hex }}"></span>
+                                            <span class="text-xs text-gray-600">{{ $sigla }}</span>
+                                        </div>
+                                    @endif
+                                </td>
 
-                            {{-- Serbatoio --}}
-                            <td class="px-2 py-1">
-                                @if($presidio->id === $presidioInModifica)
-                                    <input type="date"
-                                        wire:model.defer="presidiData.{{ $presidio->id }}.data_serbatoio"
-                                        wire:change="ricalcolaDate({{ $presidio->id }})"
-                                        class="form-input w-full rounded-md border-gray-300 text-sm" />
-                                @else
-                                    <span class="inline-block min-w-[110px]">
-                                        {{ $presidio->data_serbatoio ? \Carbon\Carbon::parse($presidio->data_serbatoio)->format('d.m.Y') : '' }}
-                                    </span>
-                                @endif
-                            </td>
+                                {{-- Note --}}
+                                <td class="px-2 py-1">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <input type="text"
+                                            wire:model.defer="presidiData.{{ $presidio->id }}.note"
+                                            class="form-input w-full rounded-md border-gray-300 focus:border-red-500 focus:ring focus:ring-red-200 text-sm" />
+                                    @else
+                                        {{ $presidio->note }}
+                                    @endif
+                                </td>
 
-                            {{-- Derivate --}}
-                            @foreach(['data_revisione','data_collaudo','data_fine_vita','data_sostituzione'] as $campo)
+                                {{-- Acquisto --}}
                                 <td class="px-2 py-1">
                                     @if($presidio->id === $presidioInModifica)
                                         <input type="date"
-                                            wire:model.defer="presidiData.{{ $presidio->id }}.{{ $campo }}"
+                                            wire:model.defer="presidiData.{{ $presidio->id }}.data_acquisto"
+                                            wire:change="ricalcolaDate({{ $presidio->id }})"
                                             class="form-input w-full rounded-md border-gray-300 text-sm" />
                                     @else
                                         <span class="inline-block min-w-[110px]">
-                                            {{ $presidio->$campo ? \Carbon\Carbon::parse($presidio->$campo)->format('d.m.Y') : '' }}
+                                            {{ $presidio->data_acquisto ? \Carbon\Carbon::parse($presidio->data_acquisto)->format('d.m.Y') : '' }}
                                         </span>
                                     @endif
                                 </td>
-                            @endforeach
 
-                            {{-- Preventivo --}}
-                            <td class="px-2 py-1 text-center">
-                                @if($presidio->id === $presidioInModifica)
-                                    <input type="checkbox"
-                                        wire:model.defer="presidiData.{{ $presidio->id }}.flag_preventivo"
-                                        class="rounded border-gray-300 focus:ring-red-500 text-red-600" />
-                                @else
-                                    {{ $presidio->flag_preventivo ? '✓' : '' }}
-                                @endif
-                            </td>
+                                {{-- Scadenza Presidio --}}
+                                <td class="px-2 py-1">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <input type="date"
+                                            wire:model.defer="presidiData.{{ $presidio->id }}.scadenza_presidio"
+                                            class="form-input w-full rounded-md border-gray-300 text-sm" />
+                                    @else
+                                        <span class="inline-block min-w-[120px]">
+                                            {{ $presidio->scadenza_presidio ? \Carbon\Carbon::parse($presidio->scadenza_presidio)->format('d.m.Y') : '' }}
+                                        </span>
+                                    @endif
+                                </td>
 
-                            {{-- Azioni --}}
-                            <td class="px-2 py-1 text-center">
-                                @if($presidio->id === $presidioInModifica)
-                                    <button wire:click="salvaRiga({{ $presidio->id }})"
-                                            class="text-green-600 hover:text-green-800 transition" title="Salva">
-                                        <i class="fa fa-save"></i>
-                                    </button>
-                                @else
-                                    <button wire:click="abilitaModifica({{ $presidio->id }})"
-                                            class="text-blue-600 hover:text-blue-800 transition" title="Modifica">
-                                        <i class="fa fa-edit"></i>
-                                    </button>
-                                    <button wire:click="disattiva({{ $presidio->id }})"
-                                            class="text-blue-600 hover:text-blue-800 transition" title="Disattiva">
-                                        <i class="fa fa-eye-slash"></i>
-                                    </button>
-                                  
-                                    <button
-                                        onclick="if(!confirm('Eliminare definitivamente questo presidio?')){ event.stopImmediatePropagation(); event.preventDefault(); }"
-                                        wire:click="elimina({{ $presidio->id }})"
-                                        class="text-red-600 hover:text-red-800 transition" title="Elimina definitivamente">
-                                        <i class="fa fa-trash"></i>
-                                    </button>
-                                @endif
-                            </td>
-                        @else
-                            {{-- Note (Idrante/Porta) --}}
-                            <td class="px-2 py-1">
-                                @if($presidio->id === $presidioInModifica)
-                                    <input type="text"
-                                        wire:model.defer="presidiData.{{ $presidio->id }}.note"
-                                        class="form-input w-full rounded-md border-gray-300 text-sm" />
-                                @else
-                                    {{ $presidio->note }}
-                                @endif
-                            </td>
+                                {{-- Serbatoio --}}
+                                <td class="px-2 py-1">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <input type="date"
+                                            wire:model.defer="presidiData.{{ $presidio->id }}.data_serbatoio"
+                                            wire:change="ricalcolaDate({{ $presidio->id }})"
+                                            class="form-input w-full rounded-md border-gray-300 text-sm" />
+                                    @else
+                                        <span class="inline-block min-w-[110px]">
+                                            {{ $presidio->data_serbatoio ? \Carbon\Carbon::parse($presidio->data_serbatoio)->format('d.m.Y') : '' }}
+                                        </span>
+                                    @endif
+                                </td>
 
-                            {{-- Azioni --}}
-                            <td class="px-2 py-1 text-center">
-                                @if($presidio->id === $presidioInModifica)
-                                    <button wire:click="salvaRiga({{ $presidio->id }})"
-                                            class="text-green-600 hover:text-green-800 transition" title="Salva">
-                                        <i class="fa fa-save"></i>
-                                    </button>
-                                @else
-                                    <button wire:click="abilitaModifica({{ $presidio->id }})"
-                                            class="text-blue-600 hover:text-blue-800 transition" title="Modifica">
-                                        <i class="fa fa-edit"></i>
-                                    </button>
+                                {{-- Derivate --}}
+                                @foreach(['data_revisione','data_collaudo','data_fine_vita','data_sostituzione'] as $campo)
+                                    <td class="px-2 py-1">
+                                        @if($presidio->id === $presidioInModifica)
+                                            <input type="date"
+                                                wire:model.defer="presidiData.{{ $presidio->id }}.{{ $campo }}"
+                                                class="form-input w-full rounded-md border-gray-300 text-sm" />
+                                        @else
+                                            <span class="inline-block min-w-[110px]">
+                                                {{ $presidio->$campo ? \Carbon\Carbon::parse($presidio->$campo)->format('d.m.Y') : '' }}
+                                            </span>
+                                        @endif
+                                    </td>
+                                @endforeach
 
-                                    <button wire:click="disattiva({{ $presidio->id }})"
-                                            class="text-blue-600 hover:text-blue-800 transition" title="Nascondi (disattiva)">
-                                        <i class="fa fa-eye-slash"></i>
-                                    </button>
+                                {{-- Preventivo --}}
+                                <td class="px-2 py-1 text-center">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <input type="checkbox"
+                                            wire:model.defer="presidiData.{{ $presidio->id }}.flag_preventivo"
+                                            class="rounded border-gray-300 focus:ring-red-500 text-red-600" />
+                                    @else
+                                        {{ $presidio->flag_preventivo ? '✓' : '' }}
+                                    @endif
+                                </td>
 
-                                   
-                                @endif
-                            </td>
+                                {{-- Azioni --}}
+                                <td class="px-2 py-1 text-center">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <button wire:click="salvaRiga({{ $presidio->id }})"
+                                                class="text-green-600 hover:text-green-800 transition" title="Salva">
+                                            <i class="fa fa-save"></i>
+                                        </button>
+                                    @else
+                                        <button wire:click="abilitaModifica({{ $presidio->id }})"
+                                                class="text-blue-600 hover:text-blue-800 transition" title="Modifica">
+                                            <i class="fa fa-edit"></i>
+                                        </button>
+                                        <button wire:click="disattiva({{ $presidio->id }})"
+                                                class="text-blue-600 hover:text-blue-800 transition" title="Disattiva">
+                                            <i class="fa fa-eye-slash"></i>
+                                        </button>
+                                        <button
+                                            onclick="if(!confirm('Eliminare definitivamente questo presidio?')){ event.stopImmediatePropagation(); event.preventDefault(); }"
+                                            wire:click="elimina({{ $presidio->id }})"
+                                            class="text-red-600 hover:text-red-800 transition" title="Elimina definitivamente">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    @endif
+                                </td>
+                            @else
+                                {{-- Note (Idrante/Porta) --}}
+                                <td class="px-2 py-1">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <input type="text"
+                                            wire:model.defer="presidiData.{{ $presidio->id }}.note"
+                                            class="form-input w-full rounded-md border-gray-300 text-sm" />
+                                    @else
+                                        {{ $presidio->note }}
+                                    @endif
+                                </td>
 
-                        @endif
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-
+                                {{-- Azioni --}}
+                                <td class="px-2 py-1 text-center">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <button wire:click="salvaRiga({{ $presidio->id }})"
+                                                class="text-green-600 hover:text-green-800 transition" title="Salva">
+                                            <i class="fa fa-save"></i>
+                                        </button>
+                                    @else
+                                        <button wire:click="abilitaModifica({{ $presidio->id }})"
+                                                class="text-blue-600 hover:text-blue-800 transition" title="Modifica">
+                                            <i class="fa fa-edit"></i>
+                                        </button>
+                                        <button wire:click="disattiva({{ $presidio->id }})"
+                                                class="text-blue-600 hover:text-blue-800 transition" title="Nascondi (disattiva)">
+                                            <i class="fa fa-eye-slash"></i>
+                                        </button>
+                                    @endif
+                                </td>
+                            @endif
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     @endif
 
     <div class="text-right mt-4">
@@ -414,7 +409,6 @@
                 </div>
             </div>
         @endif
-
 
         {{-- IDRANTE / PORTA --}}
         @if (in_array($categoria, ['Idrante','Porta'], true))
