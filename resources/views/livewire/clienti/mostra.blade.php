@@ -180,62 +180,6 @@
     </div>
 </div>
 
-{{-- SOTTO: Sedi associate full-width --}}
-<div class="mt-6 border-t pt-4">
-    <h3 class="text-md font-semibold text-red-600 mb-2">Sedi associate</h3>
-
-    @if ($cliente->sedi->count())
-        <ul class="divide-y divide-gray-200">
-            @foreach ($cliente->sedi as $sede)
-                <li class="py-2">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-medium text-gray-800">{{ $sede->nome }}</div>
-                            <div class="text-sm text-gray-600">
-                                <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($sede->indirizzo . ', ' . $sede->cap . ' ' . $sede->citta . ' ' . $sede->provincia) }}"
-                                   target="_blank" class="text-red-600 hover:underline">
-                                    <i class="fa fa-map-marker-alt mr-1"></i>
-                                    {{ $sede->indirizzo }} - {{ $sede->cap }} {{ $sede->citta }} ({{ $sede->provincia }})
-                                </a>
-                                <span class="ml-2 text-xs text-gray-500">
-                                    {{ is_array($sede->mesi_visita ) ? implode(', ', $sede->mesi_visita ) : '—' }}
-                                </span>
-                            </div>
-                            @if ($sede->media_durata_effettiva)
-                                <div class="text-xs text-gray-500 italic">
-                                    Media interventi: {{ round($sede->media_durata_effettiva) }} minuti
-                                </div>
-                            @endif
-                        </div>
-                        <div class="mt-1 space-x-2">
-                            <button wire:click="vaiAiPresidi({{ $sede->id }})"
-                                    class="bg-red-600 text-white text-xs px-3 py-1 rounded hover:bg-red-700 transition">
-                                <i class="fa fa-fire mr-1"></i>Gestione Presidi
-                            </button>
-                            <button wire:click="toggleMesiVisibili({{ $sede->id }})" class="btn btn-xs btn-warning">✏️ Mesi</button>
-                        </div>
-                    </div>
-
-                    @if($modificaMesiVisibile[$sede->id] ?? false)
-                        <div class="grid grid-cols-6 gap-2 mt-2">
-                            @for($i = 1; $i <= 12; $i++)
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox"
-                                           wire:model.defer="modificaMesi.{{ $sede->id }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}"
-                                           class="mr-1">
-                                    {{ Date::create()->month($i)->format('M') }}
-                                </label>
-                            @endfor
-                        </div>
-                        <button wire:click="salvaMesi({{ $sede->id }})" class="btn btn-xs btn-primary mt-2">💾 Salva mesi</button>
-                    @endif
-                </li>
-            @endforeach
-        </ul>
-    @else
-        <div class="text-sm text-gray-500">Nessuna sede associata.</div>
-    @endif
-</div>
 
 
     {{-- RIGA 2: Sedi associate (una card full-width) --}}
