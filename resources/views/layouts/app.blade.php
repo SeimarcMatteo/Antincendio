@@ -32,6 +32,14 @@
                     <a href="{{ route('interventi.pianificazione') }}" class="ml-4 hover:underline">
                         🛠 Pianifica interventi
                     </a>
+                    @auth
+                        @if(auth()->user()->ruoli()->where('nome','Admin')->exists())
+                            <button x-data @click="$dispatch('open-admin-settings')"
+                                    class="p-2 rounded hover:bg-gray-100" title="Impostazioni">
+                            <i class="fa fa-gear text-gray-600"></i>
+                            </button>
+                        @endif
+                    @endauth
 
 
                 </nav>

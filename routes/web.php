@@ -97,6 +97,9 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
+Route::view('/admin/impostazioni', 'admin.impostazioni')
+    ->name('admin.impostazioni')
+    ->middleware(['auth','ruoli:Admin']);
 
 
 Route::middleware(['auth'])->group(function () {
