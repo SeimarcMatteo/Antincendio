@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TipoEstintore extends Model
 {
     protected $table = 'tipi_estintori';
 
-    protected $fillable = ['sigla', 'descrizione', 'kg', 'tipo'];
+    protected $fillable = ['sigla', 'descrizione', 'kg', 'tipo', 'colore_id'];
 
     public function presidi()
     {
@@ -19,9 +20,9 @@ class TipoEstintore extends Model
     {
         return $this->belongsTo(ClassificazioneEstintore::class, 'classificazione_id');
     }
-    // App\Models\TipoEstintore.php
-    public function colore() {
-        return $this->belongsTo(\App\Models\Colore::class);
-    }
 
+    public function colore(): BelongsTo
+    {
+        return $this->belongsTo(Colore::class, 'colore_id');
+    }
 }

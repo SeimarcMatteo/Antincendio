@@ -1,24 +1,33 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Colore extends Model
 {
     protected $table = 'colori';
-    protected $fillable = ['nome', 'hex'];
 
-    // helper rapido per garantire "#RRGGBB"
-    public function setHexAttribute($value) {
-        $v = strtoupper(trim($value));
-        if (!str_starts_with($v, '#')) $v = '#'.$v;
-        $this->attributes['hex'] = substr($v, 0, 7);
-    }
+    // in tabella i campi sono: id, nome, hex, slug, ...
+    protected $fillable = ['nome', 'hex', 'slug'];
 
-    // app/Models/Colore.php
-    public function getHexAttribute(): ?string
+    protected static function booted(): void
     {
-        return $this->codice_hex;
+        static::saving(function (Colore $c) {
+            // slug leggibile
+            $c->slug = $c->slug ?: Str::slug($c->nome);
+
+            // normalizza HEX sempre con # e maiuscolo
+            if ($c->hex) {
+                $hex = strtoupper(ltrim($c->hex, '#'));
+                $c->hex = '#'.$hex;
+            }
+        });
     }
 
+    public function tipiEstintore()
+    {
+        return $this->hasMany(TipoEstintore::class, 'colore_id');
+    }
 }

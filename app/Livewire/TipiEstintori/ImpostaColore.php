@@ -1,5 +1,5 @@
 <?php
-// app/Livewire/TipiEstintori/ImpostaColore.php
+
 namespace App\Livewire\TipiEstintori;
 
 use Livewire\Component;
@@ -11,23 +11,30 @@ class ImpostaColore extends Component
     public array $selezioni = [];
     public array $originali = [];
 
-    /** @var Collection */
-    public $colori;
-    /** @var Collection */
-    public $tipi;
+    /** @var \Illuminate\Support\Collection */
+    public Collection $colori;
+    /** @var \Illuminate\Support\Collection */
+    public Collection $tipi;
 
     public array $hexById = [];
     public array $nomeById = [];
 
     public function mount(): void
     {
-        $this->colori   = Colore::orderBy('nome')->get();
-        // ⚠️ usa il nome giusto della colonna
-        $this->hexById  = $this->colori->pluck('codice_hex', 'id')->toArray();
+        // prendo solo quello che serve
+        $this->colori = Colore::query()
+            ->orderBy('nome')
+            ->get(['id','nome','hex']);
+
+        $this->hexById  = $this->colori->pluck('hex', 'id')
+            ->map(fn ($v) => $v ?: '#9CA3AF')->toArray();
+
         $this->nomeById = $this->colori->pluck('nome', 'id')->toArray();
 
-        $this->tipi = TipoEstintore::with('colore')
-            ->orderBy('tipo')->orderBy('kg')->get();
+        $this->tipi = TipoEstintore::query()
+            ->with('colore:id,nome,hex')
+            ->orderBy('tipo')->orderBy('kg')
+            ->get(['id','sigla','descrizione','tipo','kg','colore_id']);
 
         foreach ($this->tipi as $t) {
             $this->selezioni[$t->id] = $t->colore_id;
@@ -35,29 +42,32 @@ class ImpostaColore extends Component
         }
     }
 
-    /** Salva subito e aggiorna la UI */
     public function setColore(int $tipoId, ?int $coloreId): void
     {
-        logger('[ImpostaColore] setColore', ['tipoId' => $tipoId, 'coloreId' => $coloreId]);
-
         $coloreId = $coloreId ?: null;
+
+        // aggiorna DB
+        $tipo = TipoEstintore::find($tipoId);
+        if (!$tipo) return;
+
+        $tipo->colore_id = $coloreId;
+        $tipo->save();
+
+        // aggiorna stato UI
         $this->selezioni[$tipoId] = $coloreId;
-
-        if ($tipo = TipoEstintore::find($tipoId)) {
-            $tipo->colore_id = $coloreId;
-            $tipo->save();
-
-            // refresh in memoria (non strettamente necessario, ma comodo)
-            $idx = $this->tipi->search(fn ($x) => (int)$x->id === (int)$tipoId);
-            if ($idx !== false) {
-                $t = $this->tipi[$idx];
-                $t->colore_id = $coloreId;
-                $t->setRelation('colore', $coloreId ? $this->colori->firstWhere('id', $coloreId) : null);
-                $this->tipi[$idx] = $t;
-            }
-        }
-
         $this->originali[$tipoId] = $coloreId;
+
+        // sync nella collection mostrata
+        $this->tipi = $this->tipi->map(function ($x) use ($tipoId, $coloreId) {
+            if ((int)$x->id === (int)$tipoId) {
+                $x->colore_id = $coloreId;
+                $x->setRelation('colore', $coloreId
+                    ? $this->colori->firstWhere('id', $coloreId)
+                    : null);
+            }
+            return $x;
+        });
+
         $this->dispatch('notify', body: 'Colore aggiornato');
     }
 
