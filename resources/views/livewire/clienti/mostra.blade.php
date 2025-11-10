@@ -179,10 +179,11 @@
         </div>
     </div>
 </div>
-
+</div>
 
 
     {{-- RIGA 2: Sedi associate (una card full-width) --}}
+<div class="grid grid-cols-1 gap-6 mt-6">
     <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <h3 class="text-lg font-semibold text-red-600 mb-3">Sedi associate</h3>
 
