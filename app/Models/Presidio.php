@@ -26,7 +26,7 @@ class Presidio extends Model
     ];
 
     // Cutoff per cambiare il periodo di revisione
-    private const CUTOFF = '2024-08-31';
+    private const CUTOFF = '2024-08-01';
 
     protected static function booted()
     {
@@ -163,12 +163,30 @@ class Presidio extends Model
      */
     private function pickPeriodoRevisione(?Carbon $dataSerb, ClassificazioneEstintore $classi): ?int
     {
-        $cutover = Carbon::parse(self::CUTOFF)->endOfDay();
-        if ($dataSerb && $dataSerb->gt($cutover) && !empty($classi->anni_revisione_dopo)) {
+        $cutover = Carbon::parse(self::CUTOFF)->startOfDay();
+
+        $after = false;
+
+        // condizione su data serbatoio
+        if ($dataSerb && $dataSerb->gte($cutover)) {
+            $after = true;
+        }
+
+        // condizione su data ultima revisione
+        if ($this->data_ultima_revisione) {
+            $lastRev = Carbon::parse($this->data_ultima_revisione)->startOfDay();
+            if ($lastRev->gte($cutover)) {
+                $after = true;
+            }
+        }
+
+        if ($after && !empty($classi->anni_revisione_dopo)) {
             return (int) $classi->anni_revisione_dopo;
         }
+
         return (int) $classi->anni_revisione_prima;
     }
+
 
     /**
      * Prossima scadenza > oggi partendo da $start e saltando multipli di $periodYears.

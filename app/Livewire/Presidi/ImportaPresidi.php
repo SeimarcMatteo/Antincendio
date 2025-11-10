@@ -219,10 +219,10 @@ private function ricalcolaDatePerRiga(array &$row): void
     $tipo = TipoEstintore::with('classificazione')->find($tipoId);
     $classi = $tipo?->classificazione;
 
-    $periodoRev       = self::pickPeriodoRevisione($dataSerb, $classi);
-    $baseRevisione    = $row['data_ultima_revisione'] ?? $dataSerb;
-    $scadRevisione    = self::nextDueAfter($baseRevisione, $periodoRev);
-    
+    $periodoRev    = self::pickPeriodoRevisione($dataSerb, $classi, $row['data_ultima_revisione'] ?? null);
+    $baseRevisione = ($row['data_ultima_revisione'] ?? null) ?: $dataSerb;
+    $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
+     
     $scadCollaudo  = !empty($classi?->anni_collaudo) ? self::nextDueAfter($dataSerb, (int)$classi->anni_collaudo) : null;
     $fineVita      = self::addYears($dataSerb, $classi?->anni_fine_vita);
 
@@ -505,10 +505,9 @@ public function ricalcola(string $scope, int $index): void
                     $lastCollaudoRev     = self::parseDataCell($r['collaudo_revisione']   ?? null); // info (non usata)
                     
                     // calcoli da serbatoio
-                    $periodoRev       = self::pickPeriodoRevisione($dataSerb, $classi);
-                    // Nota: il PERIODO si decide sempre dal serbatoio (cutoff), ma la BASE può essere l'ultima revisione se presente
-                    $baseRevisione    = $dataUltimaRevisione ?: $dataSerb;
-                    $scadRevisione    = self::nextDueAfter($baseRevisione, $periodoRev);
+                    $periodoRev    = self::pickPeriodoRevisione($dataSerb, $classi, $dataUltimaRevisione);
+                    $baseRevisione = $dataUltimaRevisione ?: $dataSerb;
+                    $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
                     $scadCollaudo  = !empty($classi?->anni_collaudo)
                                     ? self::nextDueAfter($dataSerb, (int)$classi->anni_collaudo)
                                     : null;
@@ -822,18 +821,26 @@ public function ricalcola(string $scope, int $index): void
         // Altrimenti: mese visita immediatamente precedente
         return self::previousVisitBefore($dueC->format('Y-m-d'), $months);
     }
-private static function pickPeriodoRevisione(?string $dataSerbatoio, $classi): ?int
-{
-    if (!$classi) return null;
-    $cutover = Carbon::create(2024, 8, 31)->endOfDay();
-
-    $base = $dataSerbatoio ? Carbon::parse($dataSerbatoio) : null;
-    // Se vuoi usare SEMPRE il "prima", lascia solo ->anni_revisione_prima
-    if ($base && $base->greaterThan($cutover) && !empty($classi->anni_revisione_dopo)) {
-        return (int) $classi->anni_revisione_dopo;
+    private static function pickPeriodoRevisione(?string $dataSerbatoio, $classi, ?string $dataUltimaRevisione = null): ?int
+    {
+        if (!$classi) return null;
+    
+        $cutover = Carbon::parse(self::CUTOFF)->startOfDay();
+        $after   = false;
+    
+        if ($dataSerbatoio && Carbon::parse($dataSerbatoio)->startOfDay()->gte($cutover)) {
+            $after = true;
+        }
+        if ($dataUltimaRevisione && Carbon::parse($dataUltimaRevisione)->startOfDay()->gte($cutover)) {
+            $after = true;
+        }
+    
+        if ($after && !empty($classi->anni_revisione_dopo)) {
+            return (int) $classi->anni_revisione_dopo;
+        }
+        return (int) $classi->anni_revisione_prima;
     }
-    return (int) $classi->anni_revisione_prima;
-}
+    
 
 private static function minDate(?string ...$dates): ?string
 {

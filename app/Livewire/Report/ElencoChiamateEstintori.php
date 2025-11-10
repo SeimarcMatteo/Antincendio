@@ -33,64 +33,74 @@ class ElencoChiamateEstintori extends Component
         $this->dati = [];
 
         $dataInizio = Carbon::createFromDate($this->anno, $this->mese, 1)->startOfMonth();
-        $dataFine = Carbon::createFromDate($this->anno, $this->mese, 1)->endOfMonth();
+        $dataFine   = Carbon::createFromDate($this->anno, $this->mese, 1)->endOfMonth();
 
-        $interventi = Intervento::with(['presidi.tipoEstintore', 'cliente'])
-            ->whereBetween('data_intervento', [$dataInizio, $dataFine])
-            ->whereHas('presidi', fn($q) => $q->whereNotNull('presidio_id')) // filtro sicurezza
-            ->when($this->zona, fn($q) =>
-                $q->whereHas('cliente', fn($q2) =>
-                    $q2->where('zona', $this->zona)))
+        // 1) prendi tutti i presidi che hanno una scadenza nel mese scelto
+        $presidi = Presidio::with([
+                'tipoEstintore:id,descrizione',
+                'cliente:id,nome,zona',
+                'sede:id,cliente_id,zona',
+                'sede.cliente:id,nome',
+            ])
+            // filtro per zona (accetta sia zona cliente che zona sede)
+            ->when($this->zona, function ($q) {
+                $q->whereHas('cliente', fn($qq) => $qq->where('zona', $this->zona))
+                  ->orWhereHas('sede', fn($qs) => $qs->where('zona', $this->zona));
+            })
+            // qualunque scadenza cada nel mese
+            ->where(function ($q) use ($dataInizio, $dataFine) {
+                $q->whereBetween('data_revisione', [$dataInizio, $dataFine])
+                  ->orWhereBetween('data_collaudo',  [$dataInizio, $dataFine])
+                  ->orWhereBetween('data_fine_vita', [$dataInizio, $dataFine]);
+                // Se vuoi includere le sostituzioni pianificate, sblocca la riga sotto:
+                // ->orWhereBetween('data_sostituzione', [$dataInizio, $dataFine]);
+            })
             ->get();
 
-        $raggruppati = [];
+        // 2) raggruppa per (mese selezionato, zona, cliente, tipo estintore)
+        $gruppati = [];
+        $chiaveData = $dataInizio->format('Y-m-d'); // manteniamo una riga per mese
 
-        foreach ($interventi as $intervento) {
-            $data = Carbon::parse($intervento->data_intervento)->format('Y-m-d');
-            $zona = $intervento->cliente->zona ?? 'N.D.';
-            $cliente = $intervento->cliente->nome ?? 'N.D.';
-        
-            $gruppati = [];
-        
-            foreach ($intervento->presidi as $presidio) {
-                $tipo = $presidio->tipoEstintore->descrizione ?? 'N.D.';
-        
-                $revisiona = $this->scadenza($presidio->data_revisione);
-                $collauda  = $this->scadenza($presidio->data_collaudo);
-                $finevita  = $this->scadenza($presidio->data_fine_vita);
-        
-                if ($revisiona || $collauda || $finevita) {
-                    $chiave = implode('|', [$data, $zona, $cliente, $tipo]);
-        
-                    if (!isset($gruppati[$chiave])) {
-                        $gruppati[$chiave] = ['revisione' => 0, 'collaudo' => 0, 'fine_vita' => 0];
-                    }
-        
-                    if ($revisiona) $gruppati[$chiave]['revisione']++;
-                    if ($collauda)  $gruppati[$chiave]['collaudo']++;
-                    if ($finevita)  $gruppati[$chiave]['fine_vita']++;
-                }
+        foreach ($presidi as $p) {
+            $zona    = $p->cliente->zona
+                        ?? optional($p->sede)->zona
+                        ?? 'N.D.';
+            $cliente = $p->cliente->nome
+                        ?? optional(optional($p->sede)->cliente)->nome
+                        ?? 'N.D.';
+            $tipo    = $p->tipoEstintore->descrizione ?? 'N.D.';
+
+            $revisiona = $this->scadenza($p->data_revisione);
+            $collauda  = $this->scadenza($p->data_collaudo);
+            $finevita  = $this->scadenza($p->data_fine_vita);
+
+            if (!($revisiona || $collauda || $finevita)) {
+                continue;
             }
-        
-            foreach ($gruppati as $chiave => $valori) {
-                [$d, $z, $c, $t] = explode('|', $chiave);
-                $this->dati[] = [
-                    'data' => $d,
-                    'zona' => $z,
-                    'cliente' => $c,
-                    'tipo_estintore' => $t,
-                    'revisione' => $valori['revisione'],
-                    'collaudo' => $valori['collaudo'],
-                    'fine_vita' => $valori['fine_vita'],
-                    'totale' => array_sum($valori),
-                ];
+
+            $chiave = implode('|', [$chiaveData, $zona, $cliente, $tipo]);
+
+            if (!isset($gruppati[$chiave])) {
+                $gruppati[$chiave] = ['revisione' => 0, 'collaudo' => 0, 'fine_vita' => 0];
             }
+
+            if ($revisiona) $gruppati[$chiave]['revisione']++;
+            if ($collauda)  $gruppati[$chiave]['collaudo']++;
+            if ($finevita)  $gruppati[$chiave]['fine_vita']++;
         }
-        
 
-        foreach ($raggruppati as $chiave => $quantita) {
-            [$data, $zona, $cliente, $tipo] = explode('|', $chiave);
-            $this->dati[] = compact('data', 'zona', 'cliente', 'tipo', 'quantita');
+        foreach ($gruppati as $chiave => $valori) {
+            [$d, $z, $c, $t] = explode('|', $chiave);
+            $this->dati[] = [
+                'data'           => $d,
+                'zona'           => $z,
+                'cliente'        => $c,
+                'tipo_estintore' => $t,
+                'revisione'      => $valori['revisione'],
+                'collaudo'       => $valori['collaudo'],
+                'fine_vita'      => $valori['fine_vita'],
+                'totale'         => array_sum($valori),
+            ];
         }
     }
 

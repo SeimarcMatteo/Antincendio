@@ -106,11 +106,15 @@ public function abilitaModifica($id)
     $p = Presidio::find($id);
     $row = $p->toArray();
 
-    foreach (['data_acquisto','scadenza_presidio','data_serbatoio','data_revisione','data_collaudo','data_fine_vita','data_sostituzione'] as $k) {
-        if (!empty($row[$k])) {
-            $row[$k] = \Carbon\Carbon::parse($row[$k])->format('Y-m-d');
-        }
-    }
+    foreach ([
+        'data_acquisto','scadenza_presidio','data_serbatoio','data_revisione',
+        'data_collaudo','data_fine_vita','data_sostituzione','data_ultima_revisione' // <— aggiunto
+      ] as $k) {
+          if (!empty($row[$k])) {
+              $row[$k] = \Carbon\Carbon::parse($row[$k])->format('Y-m-d');
+          }
+      }
+      
     $this->presidiData[$id] = $row;
 }
 public function disattiva($id)
@@ -152,12 +156,15 @@ public function ricalcolaDate(int $id): void
 {
     // lavora sulla mappa modifiche (presidiData) se presente, altrimenti su valori correnti del model
     $row = $this->presidiData[$id] ?? [
-        'tipo_estintore_id' => $this->presidi->firstWhere('id', $id)?->tipo_estintore_id,
-        'data_serbatoio'    => $this->presidi->firstWhere('id', $id)?->data_serbatoio,
-        'data_acquisto'     => $this->presidi->firstWhere('id', $id)?->data_acquisto,
-        'scadenza_presidio' => $this->presidi->firstWhere('id', $id)?->scadenza_presidio,
+        'tipo_estintore_id'     => $this->presidi->firstWhere('id', $id)?->tipo_estintore_id,
+        'data_serbatoio'        => $this->presidi->firstWhere('id', $id)?->data_serbatoio,
+        'data_acquisto'         => $this->presidi->firstWhere('id', $id)?->data_acquisto,
+        'scadenza_presidio'     => $this->presidi->firstWhere('id', $id)?->scadenza_presidio,
+        'data_ultima_revisione' => $this->presidi->firstWhere('id', $id)?->data_ultima_revisione, // <— aggiunto
     ];
 
+    
+    $last = $row['data_ultima_revisione'] ?? null;
     $tipoId   = $row['tipo_estintore_id'] ?? null;
     $serb     = $row['data_serbatoio']    ?? null;
     $acq      = $row['data_acquisto']     ?? null;
@@ -181,9 +188,9 @@ public function ricalcolaDate(int $id): void
     $tipo   = \App\Models\TipoEstintore::with('classificazione')->find($tipoId);
     $classi = $tipo?->classificazione;
 
-    $periodoRev    = \App\Livewire\Presidi\ImportaPresidi::pickPeriodoRevisione($serb, $classi);
-    $scadRevisione = \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($serb, $periodoRev);
-    $scadCollaudo  = !empty($classi?->anni_collaudo)
+    $periodoRev    = \App\Livewire\Presidi\ImportaPresidi::pickPeriodoRevisione($serb, $classi, $last);
+    $baseRevisione = $last ?: $serb;
+    $scadRevisione = \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($baseRevisione, $periodoRev);$scadCollaudo  = !empty($classi?->anni_collaudo)
         ? \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($serb, (int)$classi->anni_collaudo)
         : null;
     $fineVita      = \App\Livewire\Presidi\ImportaPresidi::addYears($serb, $classi?->anni_fine_vita);
