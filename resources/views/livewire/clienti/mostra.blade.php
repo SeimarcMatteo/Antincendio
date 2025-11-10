@@ -115,8 +115,6 @@
         {{-- ===== sotto le NOTE ===== --}}
 <div class="mt-6 space-y-6">
 
-       {{-- RIGA: Mesi visita (sx) + Fatturazione (dx) --}}
-<div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
     {{-- SX: Mesi visita (sede principale) --}}
     <div class="border-t pt-4">
