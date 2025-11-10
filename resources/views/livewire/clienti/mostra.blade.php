@@ -112,18 +112,17 @@
     @endif
 </div>
 
-        <div class="mt-4">
-            <div class="flex items-center justify-between">
-            <span class="font-semibold">
-               {{-- ====== SEZIONE DOPPIA: SX = Mesi + Fatturazione, DX = Sedi ====== --}}
-<div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {{-- ===== sotto le NOTE ===== --}}
+<div class="mt-6 space-y-6">
 
-    {{-- SINISTRA: Mesi visita + Fatturazione --}}
-    <div class="space-y-6">
-        {{-- Mesi visita (sede principale) --}}
-        <div class="border-t pt-4">
+    {{-- RIGA 1: Mesi visita + Fatturazione (due card affiancate) --}}
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+        {{-- Card: Mesi visita --}}
+        <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between">
-                <h3 class="text-md font-semibold text-red-600">Mesi visita (sede principale):
+                <h3 class="text-lg font-semibold text-red-600">
+                    Mesi visita (sede principale):
                     <span class="font-normal text-gray-800">
                         {{ is_array($cliente->mesi_visita) ? implode(', ', $cliente->mesi_visita) : '—' }}
                     </span>
@@ -132,21 +131,23 @@
             </div>
 
             @if($modificaMesiVisibile['cliente'] ?? false)
-                <div class="grid grid-cols-6 gap-2 mt-2">
+                <div class="grid grid-cols-6 gap-2 mt-4">
                     @for($i = 1; $i <= 12; $i++)
-                        <label class="inline-flex items-center">
-                            <input type="checkbox" wire:model.defer="modificaMesi.cliente.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" class="mr-1">
+                        <label class="inline-flex items-center text-sm">
+                            <input type="checkbox"
+                                   wire:model.defer="modificaMesi.cliente.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}"
+                                   class="mr-1">
                             {{ Date::create()->month($i)->format('M') }}
                         </label>
                     @endfor
                 </div>
-                <button wire:click="salvaMesi" class="btn btn-xs btn-primary mt-2">💾 Salva mesi</button>
+                <button wire:click="salvaMesi" class="btn btn-xs btn-primary mt-3">💾 Salva mesi</button>
             @endif
         </div>
 
-        {{-- Fatturazione --}}
-        <div class="border-t pt-4">
-            <h3 class="text-md font-semibold text-red-600 mb-2">Fatturazione</h3>
+        {{-- Card: Fatturazione --}}
+        <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-semibold text-red-600 mb-3">Fatturazione</h3>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                 <div>
@@ -170,32 +171,36 @@
                     </div>
                 @endif
 
-                <div>
-                    <button wire:click="salvaFatturazione" class="btn btn-primary mt-4">
+                <div class="sm:col-span-2">
+                    <button wire:click="salvaFatturazione" class="btn btn-primary mt-2">
                         💾 Salva Fatturazione
                     </button>
                 </div>
             </div>
         </div>
+
     </div>
 
-    {{-- DESTRA: Sedi associate --}}
-    <div class="border-t pt-4">
-        <h3 class="text-md font-semibold text-red-600 mb-2">Sedi associate</h3>
+    {{-- RIGA 2: Sedi associate (una card full-width) --}}
+    <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <h3 class="text-lg font-semibold text-red-600 mb-3">Sedi associate</h3>
 
         @if ($cliente->sedi->count())
             <ul class="divide-y divide-gray-200">
                 @foreach ($cliente->sedi as $sede)
-                    <li class="py-2">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="font-medium text-gray-800">{{ $sede->nome }}</div>
+                    <li class="py-3">
+                        <div class="flex justify-between items-start gap-4">
+                            <div class="min-w-0">
+                                <div class="font-medium text-gray-800 truncate">{{ $sede->nome }}</div>
                                 <div class="text-sm text-gray-600">
-                                    <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($sede->indirizzo . ', ' . $sede->cap . ' ' . $sede->citta . ' ' . $sede->provincia) }}" target="_blank" class="text-red-600 hover:underline">
+                                    <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($sede->indirizzo . ', ' . $sede->cap . ' ' . $sede->citta . ' ' . $sede->provincia) }}"
+                                       target="_blank" class="text-red-600 hover:underline">
                                         <i class="fa fa-map-marker-alt mr-1"></i>
                                         {{ $sede->indirizzo }} - {{ $sede->cap }} {{ $sede->citta }} ({{ $sede->provincia }})
                                     </a>
-                                    {{ is_array($sede->mesi_visita ) ? implode(', ', $sede->mesi_visita ) : '—' }}
+                                    <span class="ml-2 text-xs text-gray-500">
+                                        {{ is_array($sede->mesi_visita ) ? implode(', ', $sede->mesi_visita ) : '—' }}
+                                    </span>
                                 </div>
                                 @if ($sede->media_durata_effettiva)
                                     <div class="text-xs text-gray-500 italic">
@@ -203,8 +208,10 @@
                                     </div>
                                 @endif
                             </div>
-                            <div class="mt-1 space-x-2">
-                                <button wire:click="vaiAiPresidi({{ $sede->id }})" class="bg-red-600 text-white text-xs px-3 py-1 rounded hover:bg-red-700 transition">
+
+                            <div class="mt-1 shrink-0 space-x-2">
+                                <button wire:click="vaiAiPresidi({{ $sede->id }})"
+                                        class="bg-red-600 text-white text-xs px-3 py-1 rounded hover:bg-red-700 transition">
                                     <i class="fa fa-fire mr-1"></i>Gestione Presidi
                                 </button>
                                 <button wire:click="toggleMesiVisibili({{ $sede->id }})" class="btn btn-xs btn-warning">✏️ Mesi</button>
@@ -212,10 +219,12 @@
                         </div>
 
                         @if($modificaMesiVisibile[$sede->id] ?? false)
-                            <div class="grid grid-cols-6 gap-2 mt-2">
+                            <div class="grid grid-cols-6 gap-2 mt-3">
                                 @for($i = 1; $i <= 12; $i++)
-                                    <label class="inline-flex items-center">
-                                        <input type="checkbox" wire:model.defer="modificaMesi.{{ $sede->id }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" class="mr-1">
+                                    <label class="inline-flex items-center text-sm">
+                                        <input type="checkbox"
+                                               wire:model.defer="modificaMesi.{{ $sede->id }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}"
+                                               class="mr-1">
                                         {{ Date::create()->month($i)->format('M') }}
                                     </label>
                                 @endfor
@@ -229,4 +238,5 @@
             <div class="text-sm text-gray-500">Nessuna sede associata.</div>
         @endif
     </div>
+
 </div>
