@@ -13,7 +13,7 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
     {{-- SX riga 1 --}}
     <div>
         <span class="font-semibold text-gray-700">Codice esterno:</span>
@@ -46,7 +46,7 @@
     </div>
 
     {{-- DX riga 3: ZONA (tra P.IVA ed Email) --}}
-    <div class="sm:col-start-2">
+    <div class="sm:col-start-2 mt-0">
         <label class="font-semibold text-gray-700">Zona</label>
         <div class="mt-1 flex items-center gap-2">
             <input
@@ -133,85 +133,87 @@
                 </div>
                 <button wire:click="salvaMesi" class="btn btn-xs btn-primary mt-2">💾 Salva mesi</button>
             @endif
-        </div>
-        <div class="mt-6 border-t pt-4">
-            <h3 class="text-md font-semibold text-red-600 mb-2">Fatturazione</h3>
+        {{-- ====== FATTURAZIONE + SEDI fianco a fianco ====== --}}
+<div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+    {{-- Colonna sinistra: Fatturazione --}}
+    <div class="border-t pt-4">
+        <h3 class="text-md font-semibold text-red-600 mb-2">Fatturazione</h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Tipo Fatturazione</label>
+                <select wire:model="fatturazione_tipo" class="input input-bordered w-full mt-1">
+                    <option value="">—</option>
+                    <option value="annuale">Annuale</option>
+                    <option value="semestrale">Semestrale</option>
+                </select>
+            </div>
+
+            @if ($fatturazione_tipo === 'annuale')
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Tipo Fatturazione</label>
-                    <select wire:model="fatturazione_tipo" class="input input-bordered w-full mt-1">
+                    <label class="block text-sm font-medium text-gray-700">Mese Fatturazione</label>
+                    <select wire:model="mese_fatturazione" class="input input-bordered w-full mt-1">
                         <option value="">—</option>
-                        <option value="annuale">Annuale</option>
-                        <option value="semestrale">Semestrale</option>
+                        @for ($i = 1; $i <= 12; $i++)
+                            <option value="{{ $i }}">{{ Date::create()->month($i)->format('F') }}</option>
+                        @endfor
                     </select>
                 </div>
+            @endif
 
-                @if ($fatturazione_tipo === 'annuale')
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Mese Fatturazione</label>
-                        <select wire:model="mese_fatturazione" class="input input-bordered w-full mt-1">
-                            <option value="">—</option>
-                            @for ($i = 1; $i <= 12; $i++)
-                                <option value="{{ $i }}">{{ Date::create()->month($i)->format('F') }}</option>
-                            @endfor
-                        </select>
-                    </div>
-                @endif
-
-                <div>
-                    <button wire:click="salvaFatturazione" class="btn btn-primary mt-4">
-                        💾 Salva Fatturazione
-                    </button>
-                </div>
+            <div>
+                <button wire:click="salvaFatturazione" class="btn btn-primary mt-4">
+                    💾 Salva Fatturazione
+                </button>
             </div>
         </div>
+    </div>
 
+    {{-- Colonna destra: Sedi associate --}}
+    <div class="border-t pt-4">
+        <h3 class="text-md font-semibold text-red-600 mb-2">Sedi associate</h3>
 
-        @if ($cliente->sedi->count())
-            <div class="mt-6">
-                <h3 class="text-md font-semibold text-red-600 mb-2">Sedi associate</h3>
-                <ul class="divide-y divide-gray-200">
-                    @foreach ($cliente->sedi as $sede)
-                        <li class="py-2">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <div class="font-medium text-gray-800">{{ $sede->nome }}</div>
-                                    <div class="text-sm text-gray-600">
-                                        <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($sede->indirizzo . ', ' . $sede->cap . ' ' . $sede->citta . ' ' . $sede->provincia) }}" target="_blank" class="text-red-600 hover:underline">
-                                            <i class="fa fa-map-marker-alt mr-1"></i>
-                                            {{ $sede->indirizzo }} - {{ $sede->cap }} {{ $sede->citta }} ({{ $sede->provincia }})
-                                        </a>
-                                        {{ is_array($sede->mesi_visita ) ? implode(', ', $sede->mesi_visita ) : '—' }}
-                                    </div>
-                                    @if ($sede->media_durata_effettiva)
-                                        <div class="text-xs text-gray-500 italic">
-                                            Media interventi: {{ round($sede->media_durata_effettiva) }} minuti
-                                        </div>
-                                    @endif
-                                </div>
-                                <div class="mt-1 space-x-2">
-                                    <button wire:click="vaiAiPresidi({{ $sede->id }})" class="bg-red-600 text-white text-xs px-3 py-1 rounded hover:bg-red-700 transition">
-                                        <i class="fa fa-fire mr-1"></i>Gestione Presidi
-                                    </button>
-                                    <button wire:click="toggleMesiVisibili({{ $sede->id }})" class="btn btn-xs btn-warning">✏️ Mesi</button>
-                                </div>
+        <ul class="divide-y divide-gray-200">
+            @foreach ($cliente->sedi as $sede)
+                <li class="py-2">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-medium text-gray-800">{{ $sede->nome }}</div>
+                            <div class="text-sm text-gray-600">
+                                <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($sede->indirizzo . ', ' . $sede->cap . ' ' . $sede->citta . ' ' . $sede->provincia) }}" target="_blank" class="text-red-600 hover:underline">
+                                    <i class="fa fa-map-marker-alt mr-1"></i>
+                                    {{ $sede->indirizzo }} - {{ $sede->cap }} {{ $sede->citta }} ({{ $sede->provincia }})
+                                </a>
+                                {{ is_array($sede->mesi_visita ) ? implode(', ', $sede->mesi_visita ) : '—' }}
                             </div>
-                            @if($modificaMesiVisibile[$sede->id] ?? false)
-                                <div class="grid grid-cols-6 gap-2 mt-2">
-                                    @for($i = 1; $i <= 12; $i++)
-                                        <label class="inline-flex items-center">
-                                            <input type="checkbox" wire:model.defer="modificaMesi.{{ $sede->id }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" class="mr-1">
-                                            {{ Date::create()->month($i)->format('M') }}
-                                        </label>
-                                    @endfor
+                            @if ($sede->media_durata_effettiva)
+                                <div class="text-xs text-gray-500 italic">
+                                    Media interventi: {{ round($sede->media_durata_effettiva) }} minuti
                                 </div>
-                                <button wire:click="salvaMesi({{ $sede->id }})" class="btn btn-xs btn-primary mt-2">💾 Salva mesi</button>
                             @endif
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
+                        </div>
+                        <div class="mt-1 space-x-2">
+                            <button wire:click="vaiAiPresidi({{ $sede->id }})" class="bg-red-600 text-white text-xs px-3 py-1 rounded hover:bg-red-700 transition">
+                                <i class="fa fa-fire mr-1"></i>Gestione Presidi
+                            </button>
+                            <button wire:click="toggleMesiVisibili({{ $sede->id }})" class="btn btn-xs btn-warning">✏️ Mesi</button>
+                        </div>
+                    </div>
+
+                    @if($modificaMesiVisibile[$sede->id] ?? false)
+                        <div class="grid grid-cols-6 gap-2 mt-2">
+                            @for($i = 1; $i <= 12; $i++)
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" wire:model.defer="modificaMesi.{{ $sede->id }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" class="mr-1">
+                                    {{ Date::create()->month($i)->format('M') }}
+                                </label>
+                            @endfor
+                        </div>
+                        <button wire:click="salvaMesi({{ $sede->id }})" class="btn btn-xs btn-primary mt-2">💾 Salva mesi</button>
+                    @endif
+                </li>
+            @endforeach
+        </ul>
     </div>
 </div>
