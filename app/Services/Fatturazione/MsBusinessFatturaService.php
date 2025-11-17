@@ -164,6 +164,7 @@ class MsBusinessFatturaService
                     'mo_quant'  => $quantita,
                     'mo_prezzo' => $prezzoUnit,
                     'mo_valore' => $valore,
+                    'mo_valoremm' => $valore,
                     'mo_scont1' => 0,
                     'mo_scont2' => 0,
                     'mo_scont3' => 0,
