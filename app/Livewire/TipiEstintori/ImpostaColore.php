@@ -2,14 +2,13 @@
 
 namespace App\Livewire\TipiEstintori;
 
-
 use Livewire\Component;
 use App\Models\TipoEstintore;
 use App\Models\Colore;
 
-class ColoriEstintori extends Component
+class ImpostaColore extends Component
 {
-    public $tipi;
+    public $tipi;              // 👈 questa è la variabile usata nella Blade
     public $colori;
 
     public $selectedTipoId = null;
@@ -20,9 +19,8 @@ class ColoriEstintori extends Component
         $this->tipi   = TipoEstintore::with('colore')->orderBy('descrizione')->get();
         $this->colori = Colore::orderBy('nome')->get();
 
-        // seleziona il primo tipo come default
         if ($this->tipi->isNotEmpty()) {
-            $this->selectedTipoId  = $this->tipi->first()->id;
+            $this->selectedTipoId   = $this->tipi->first()->id;
             $this->selectedColoreId = $this->tipi->first()->colore_id;
         }
     }
@@ -32,7 +30,6 @@ class ColoriEstintori extends Component
         $this->selectedTipoId = $id;
 
         $tipo = $this->tipi->firstWhere('id', $id);
-
         $this->selectedColoreId = $tipo?->colore_id;
     }
 
@@ -55,7 +52,7 @@ class ColoriEstintori extends Component
         $tipo->colore_id = $this->selectedColoreId ?: null;
         $tipo->save();
 
-        // aggiorna la collection in memoria
+        // ricarico la lista con le relazioni aggiornate
         $this->tipi = TipoEstintore::with('colore')->orderBy('descrizione')->get();
 
         session()->flash('message', 'Colore aggiornato correttamente.');
@@ -63,6 +60,10 @@ class ColoriEstintori extends Component
 
     public function render()
     {
-        return view('livewire.impostazioni.colori-estintori');
+        return view('livewire.tipi-estintori.imposta-colore', [
+            // 👇 così siamo sicuri che la Blade abbia queste variabili
+            'tipi'    => $this->tipi,
+            'colori'  => $this->colori,
+        ]);
     }
 }
