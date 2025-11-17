@@ -63,8 +63,11 @@ class MsBusinessFatturaService
             $codTpbf = 1;
         }
 
-        $ivaTestata = $an->an_codese; // può essere null
-
+        $ivaTestata = $an->an_codese ?? 1022; // può essere null
+        
+        if ($ivaTestata === 0) {
+            $ivaTestata = 1022; // default se 0
+        }
         // Lookup tabtpbf (con fallback a 1)
         $tpbf = DB::connection(self::CONN)
             ->table(self::T_TABTPBF)
