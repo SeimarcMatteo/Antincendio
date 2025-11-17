@@ -101,6 +101,7 @@ class MsBusinessFatturaService
         $dataDoc        = $dataDocumento ?? now();
         $tm_datdoc      = $dataDoc->toDateString();     // 'YYYY-MM-DD'
         $tm_datdocYmd   = $dataDoc->format('Ymd');      // 'YYYYMMDD'
+        $dtDataForSp = $dataDoc->format('Ymd');
         $tm_datdocSql   = DB::raw("CONVERT(datetime, '{$tm_datdocYmd}', 112)");
 
         // 4) Insert testata + righe ORDINE (MSSQL)
@@ -178,7 +179,7 @@ class MsBusinessFatturaService
                     $tm_serie,
                     $tm_numdoc,
                     'ANTINCENDIO',
-                    $tm_datdoc,        // 'YYYY-MM-DD' – il driver lo converte
+                    $dtDataForSp,        // 'YYYY-MM-DD' – il driver lo converte
                     'admin',
                 ]
             );
