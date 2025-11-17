@@ -1,4 +1,7 @@
-namespace App\Livewire\TipoEstintori;
+<?php
+
+namespace App\Livewire\TipiEstintori;
+
 
 use Livewire\Component;
 use App\Models\TipoEstintore;
