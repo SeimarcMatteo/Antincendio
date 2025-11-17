@@ -127,6 +127,7 @@ class MsBusinessFatturaService
                 'td_serie'   => $tm_serie,
                 'td_numord'  => $tm_numdoc,
                 'td_datord'  => $tm_datdocSql,
+                'td_datcons'=> $tm_datdocSql,
                 'td_conto'   => $conto,
                 'td_contodest'   => $conto,
                 'td_contfatt'   => $conto,
