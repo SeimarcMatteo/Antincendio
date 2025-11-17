@@ -96,11 +96,21 @@ class FormPianificazioneIntervento extends Component
      * Carica i dati per la pianificazione in base a cliente, sede, mese e anno.
      */
     public function caricaDati($clienteId, $sedeId = null, $mese = null, $anno = null)
-    {
-        $this->clienteId = $clienteId;
-        $this->sedeId = $sedeId;
-        $this->dataIntervento = Carbon::createFromDate($anno, $mese, 1)->format('Y-m-d');
+{
+    $this->clienteId = $clienteId;
+    $this->sedeId = $sedeId;
+
+    // Se non arrivano mese/anno uso oggi+1
+    if ($mese && $anno) {
+        $oggi = now();
+        $domani = Carbon::create($anno, $mese, min($oggi->day, 28))->addDay();
+    } else {
+        $domani = now()->addDay();
     }
+
+    $this->dataIntervento = $domani->format('Y-m-d');
+}
+
 
     // 🔽🔽 QUI I METODI CHE MANCAVANO 🔽🔽
 
