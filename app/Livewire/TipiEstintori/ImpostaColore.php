@@ -1,43 +1,65 @@
-<?php
-
-namespace App\Livewire\TipiEstintori;
+namespace App\Livewire\TipoEstintori;
 
 use Livewire\Component;
 use App\Models\TipoEstintore;
 use App\Models\Colore;
 
-class ImpostaColore extends Component
+class ColoriEstintori extends Component
 {
-    public function setColore(int $tipoId, int $coloreId): void
+    public $tipi;
+    public $colori;
+
+    public $selectedTipoId = null;
+    public $selectedColoreId = null;
+
+    public function mount()
     {
-        \Log::info('[ImpostaColore] setColore', compact('tipoId','coloreId'));
+        $this->tipi   = TipoEstintore::with('colore')->orderBy('descrizione')->get();
+        $this->colori = Colore::orderBy('nome')->get();
 
-        // Salva su DB
-        TipoEstintore::whereKey($tipoId)->update(['colore_id' => $coloreId]);
-
-        // Toast browser event (catturato da @toast.window nel layout)
-        $this->dispatch('toast', message: 'Colore aggiornato', type: 'success');
-        // Non serve forzare $refresh: Livewire ri-renderizza dopo l’azione
+        // seleziona il primo tipo come default
+        if ($this->tipi->isNotEmpty()) {
+            $this->selectedTipoId  = $this->tipi->first()->id;
+            $this->selectedColoreId = $this->tipi->first()->colore_id;
+        }
     }
 
-    public function clearColore(int $tipoId): void
+    public function selectTipo($id)
     {
-        \Log::info('[ImpostaColore] clearColore', compact('tipoId'));
+        $this->selectedTipoId = $id;
 
-        TipoEstintore::whereKey($tipoId)->update(['colore_id' => null]);
+        $tipo = $this->tipi->firstWhere('id', $id);
 
-        $this->dispatch('toast', message: 'Colore rimosso', type: 'info');
+        $this->selectedColoreId = $tipo?->colore_id;
+    }
+
+    public function updatedSelectedColoreId()
+    {
+        $this->salvaColore();
+    }
+
+    public function salvaColore()
+    {
+        if (!$this->selectedTipoId) {
+            return;
+        }
+
+        $tipo = TipoEstintore::find($this->selectedTipoId);
+        if (!$tipo) {
+            return;
+        }
+
+        $tipo->colore_id = $this->selectedColoreId ?: null;
+        $tipo->save();
+
+        // aggiorna la collection in memoria
+        $this->tipi = TipoEstintore::with('colore')->orderBy('descrizione')->get();
+
+        session()->flash('message', 'Colore aggiornato correttamente.');
     }
 
     public function render()
     {
-        return view('livewire.tipi-estintori.imposta-colore', [
-            // NB: qui assumo colonna DB "hex"
-            'colori' => Colore::orderBy('nome')->get(['id','nome','hex']),
-            'tipi'   => TipoEstintore::with('colore:id,nome,hex')
-                            ->orderBy('tipo')
-                            ->orderBy('kg')
-                            ->get(['id','sigla','descrizione','tipo','kg','colore_id']),
-        ]);
+        return view('livewire.impostazioni.colori-estintori');
     }
 }
