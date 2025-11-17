@@ -148,6 +148,9 @@ class MsBusinessFatturaService
                 $quantita   = $r['qty'];
                 $prezzoUnit = $r['unit_price'];
                 $valore     = $quantita * $prezzoUnit;
+                if ($codiva === 0) {
+                    $codiva = 1022; // default se 0
+                }
 
                 DB::connection(self::CONN)->table(self::T_RIGHE)->insert([
                     'mo_tipork' => $tm_tipork,
@@ -164,7 +167,7 @@ class MsBusinessFatturaService
                     'mo_scont1' => 0,
                     'mo_scont2' => 0,
                     'mo_scont3' => 0,
-                    'mo_codiva' => $codiva,
+                    'mo_codiva' => $codiva ?? 1022,
                     'mo_magaz' => 1,        // magazzino 1 di default
                     'mo_datcons' => $tm_datdocSql,
                 ]);
