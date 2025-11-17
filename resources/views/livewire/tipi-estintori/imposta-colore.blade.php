@@ -37,7 +37,7 @@
                     <select
                         class="border-gray-300 rounded w-full text-sm"
                         wire:change="salva({{ $tipo->id }}, $event.target.value)"
-                        style="color: {{ $hexSel }};"
+                        style="color: {{ $tipo->colore ? $tipo->colore->hex : 'inherit' }};"
                     >
                         <option value="">— Nessun colore —</option>
 
