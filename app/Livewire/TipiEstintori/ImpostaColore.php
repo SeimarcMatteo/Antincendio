@@ -15,19 +15,19 @@ class ImpostaColore extends Component
     {
         logger('setColore()', ['tipoId'=>$tipoId,'coloreId'=>$coloreId]);
         TipoEstintore::whereKey($tipoId)->update(['colore_id' => $coloreId]);
-        $this->dispatch('notify', body: 'Colore aggiornato');
+        $this->dispatch('toast', message: 'Colore aggiornato', type: 'success');
     }
 
     public function clearColore(int $tipoId): void
     {
          logger('clearColore()', ['tipoId'=>$tipoId]);
         TipoEstintore::whereKey($tipoId)->update(['colore_id' => null]);
-        $this->dispatch('notify', body: 'Colore rimosso');
+        $this->dispatch('toast', message: 'Colore rimosso', type: 'success');
     }
 
     public function render()
     {
-        
+
         $colori = Colore::orderBy('nome')->get(['id','nome','hex']);
         $tipi   = TipoEstintore::with('colore:id,nome,hex')
                     ->orderBy('tipo')->orderBy('kg')

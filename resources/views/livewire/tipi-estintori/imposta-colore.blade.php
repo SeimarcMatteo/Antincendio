@@ -29,11 +29,9 @@
             <td class="px-3 py-2">
               <div class="relative" x-data="{ open:false }">
                 <button type="button"
-                        class="w-56 justify-start inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50"
-                        @click.stop="open = !open"
-                        @keydown.escape.window="open=false"
-                        :aria-expanded="open"
-                        aria-haspopup="listbox">
+                        class="w-56 inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50"
+                        @click="open = !open" @keydown.escape.window="open=false"
+                        :aria-expanded="open" aria-haspopup="listbox">
                   <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10"
                         style="background-color: {{ $hex }}"></span>
                   <span>{{ $nome }}</span>
@@ -43,10 +41,10 @@
                      @click.outside="open=false"
                      class="absolute z-10 mt-1 w-56 max-h-64 overflow-auto rounded-md border bg-white shadow">
 
-                  {{-- Nessuno --}}
                   <button type="button"
                           class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-                          @click.stop="$wire.clearColore({{ $t->id }}).then(() => { open=false })">
+                          @click.stop="open=false"
+                          wire:click="clearColore({{ $t->id }})">
                     <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10 bg-gray-300"></span>
                     <span>— nessuno —</span>
                   </button>
@@ -55,9 +53,9 @@
 
                   @foreach($colori as $c)
                     <button type="button"
-                            wire:key="opt-{{ $t->id }}-{{ $c->id }}"
                             class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-                            @click.stop="$wire.setColore({{ $t->id }}, {{ $c->id }}).then(() => { open=false })">
+                            @click.stop="open=false"
+                            wire:click="setColore({{ $t->id }}, {{ $c->id }})">
                       <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10"
                             style="background-color: {{ $c->hex }}"></span>
                       <span>{{ $c->nome }}</span>
