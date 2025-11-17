@@ -124,7 +124,6 @@ class MsBusinessFatturaService
                 'td_numord'  => $tm_numdoc,
                 'td_datord'  => $tm_datdocSql,
                 'td_conto'   => $conto,
-                'td_conto2'  => $conto,
                 'td_codtpbf' => $codTpbf,
                 'td_causale' => $causaleMag,
                 'td_codese'  => $ivaTestata ?? 0,
