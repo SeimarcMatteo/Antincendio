@@ -48,7 +48,7 @@ class MsBusinessFatturaService
 
         $an = DB::connection(self::CONN)
             ->table(self::T_ANAGRA)
-            ->select('an_conto', 'an_codtpbf', 'an_codese')
+            ->select('an_conto', 'an_codtpbf', 'an_codese','an_codpag')
             ->where('an_conto', $conto)
             ->first();
 
@@ -62,6 +62,7 @@ class MsBusinessFatturaService
         if ($codTpbf === 0) {
             $codTpbf = 1;
         }
+        $codPaga = $an->an_codpag ?? 1; // può essere null
 
         $ivaTestata = $an->an_codese ?? 1022; // può essere null
         
@@ -118,7 +119,9 @@ class MsBusinessFatturaService
             $tm_serie,
             $tm_anno,
             $tm_numdoc,
-            $tm_datdocSql
+            $tm_datdocSql,
+            $codPaga,
+
         ) {
             // TESTATA ORDINE (testord)
             DB::connection(self::CONN)->table(self::T_TESTATA)->insert([
@@ -134,6 +137,8 @@ class MsBusinessFatturaService
                 'td_tipobf' => $codTpbf,
                 'td_caustra' => $causaleMag,
                 'td_codese'  => $ivaTestata ?? 0,
+                'td_magaz'   => 1,          // magazzino 1 di default
+                'td_codpag'  => $codPaga ?? 1, // codice pagamento, default 1 se assente
             ]);
 
             // RIGHE ORDINE (movord)
