@@ -1,7 +1,7 @@
 <div class="space-y-4">
   <h2 class="text-xl font-semibold">Colore per tipologia estintore</h2>
 
-  <div class="overflow-x-auto rounded-xl border">
+  <div class="overflow-x-auto rounded-xl border bg-white">
     <table class="min-w-full text-sm">
       <thead class="bg-gray-50">
         <tr>
@@ -27,11 +27,13 @@
             <td class="px-3 py-2 text-right">{{ $t->kg }}</td>
 
             <td class="px-3 py-2">
-              <div class="relative" x-data="{ open:false }">
+              <div class="relative" x-data="{ open:false }" wire:key="picker-{{ $t->id }}">
                 <button type="button"
                         class="w-56 inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50"
-                        @click="open = !open" @keydown.escape.window="open=false"
-                        :aria-expanded="open" aria-haspopup="listbox">
+                        @click="open = !open"
+                        @keydown.escape.window="open=false"
+                        :aria-expanded="open"
+                        aria-haspopup="listbox">
                   <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10"
                         style="background-color: {{ $hex }}"></span>
                   <span>{{ $nome }}</span>
@@ -41,10 +43,10 @@
                      @click.outside="open=false"
                      class="absolute z-10 mt-1 w-56 max-h-64 overflow-auto rounded-md border bg-white shadow">
 
+                  {{-- Nessuno --}}
                   <button type="button"
                           class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-                          @click.stop="open=false"
-                          wire:click="clearColore({{ $t->id }})">
+                          @click="open=false; @this.call('clearColore', {{ $t->id }})">
                     <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10 bg-gray-300"></span>
                     <span>— nessuno —</span>
                   </button>
@@ -54,8 +56,7 @@
                   @foreach($colori as $c)
                     <button type="button"
                             class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-                            @click.stop="open=false"
-                            wire:click="setColore({{ $t->id }}, {{ $c->id }})">
+                            @click="open=false; @this.call('setColore', {{ $t->id }}, {{ $c->id }})">
                       <span class="inline-block w-4 h-4 rounded-full ring-1 ring-black/10"
                             style="background-color: {{ $c->hex }}"></span>
                       <span>{{ $c->nome }}</span>
