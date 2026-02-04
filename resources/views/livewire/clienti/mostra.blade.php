@@ -151,7 +151,7 @@
                 <label class="block text-sm font-medium text-gray-700">Base (fallback)</label>
                 <input type="number" min="0" max="1440"
                        wire:model.defer="minutiIntervento"
-                       class="input input-bordered w-full mt-1"
+                       class="input input-bordered mt-1 max-w-[6rem]"
                        placeholder="Es. 60">
                 <div class="text-xs text-gray-500 mt-1">Usato se mese1/mese2 non valorizzati.</div>
             </div>
@@ -159,14 +159,14 @@
                 <label class="block text-sm font-medium text-gray-700">Mese visita 1</label>
                 <input type="number" min="0" max="1440"
                        wire:model.defer="minutiInterventoMese1"
-                       class="input input-bordered w-full mt-1"
+                       class="input input-bordered mt-1 max-w-[6rem]"
                        placeholder="Es. 90">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700">Mese visita 2</label>
                 <input type="number" min="0" max="1440"
                        wire:model.defer="minutiInterventoMese2"
-                       class="input input-bordered w-full mt-1"
+                       class="input input-bordered mt-1 max-w-[6rem]"
                        placeholder="Es. 120">
             </div>
             <div class="sm:col-span-3">

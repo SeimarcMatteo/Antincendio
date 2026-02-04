@@ -58,7 +58,12 @@
     @if($presidi->isEmpty())
         <div class="text-gray-500 italic">Nessun presidio registrato per questa categoria.</div>
     @else
-        <div class="overflow-x-auto mb-6 max-h-[70vh] border border-gray-200 rounded-lg">
+        <div class="mb-6 border border-gray-200 rounded-lg shadow-sm bg-white">
+            <div class="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+                <div class="text-sm font-semibold text-gray-700">Lista presidi</div>
+                <div class="text-xs text-gray-500">Suggerimento: clicca su modifica per aggiornare una riga</div>
+            </div>
+            <div class="overflow-x-auto max-h-[70vh]">
             @php
                 $isEst = ($categoriaAttiva === 'Estintore');
             @endphp
@@ -348,6 +353,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     @endif
 
