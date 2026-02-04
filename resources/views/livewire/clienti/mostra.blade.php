@@ -142,6 +142,38 @@
             <button wire:click="salvaMesi" class="btn btn-xs btn-primary mt-2">💾 Salva mesi</button>
         @endif
     </div>
+
+    {{-- Tempo medio per mese visita --}}
+    <div class="border-t pt-4">
+        <h3 class="text-md font-semibold text-red-600 mb-2">Tempo medio visita (minuti)</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Base (fallback)</label>
+                <input type="number" min="0" max="1440"
+                       wire:model.defer="minutiIntervento"
+                       class="input input-bordered w-full mt-1"
+                       placeholder="Es. 60">
+                <div class="text-xs text-gray-500 mt-1">Usato se mese1/mese2 non valorizzati.</div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Mese visita 1</label>
+                <input type="number" min="0" max="1440"
+                       wire:model.defer="minutiInterventoMese1"
+                       class="input input-bordered w-full mt-1"
+                       placeholder="Es. 90">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Mese visita 2</label>
+                <input type="number" min="0" max="1440"
+                       wire:model.defer="minutiInterventoMese2"
+                       class="input input-bordered w-full mt-1"
+                       placeholder="Es. 120">
+            </div>
+            <div class="sm:col-span-3">
+                <button wire:click="salvaMinutiVisita" class="btn btn-primary btn-sm">💾 Salva tempi visita</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="mt-6 space-y-6">

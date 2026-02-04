@@ -13,6 +13,9 @@ class Mostra extends Component
     public $modificaMesi = [];
     public $modificaMesiVisibile = [];
     public $mediaInterventiSenzaSede = null;
+    public ?int $minutiIntervento = null;
+    public ?int $minutiInterventoMese1 = null;
+    public ?int $minutiInterventoMese2 = null;
 
     public $fatturazione_tipo;
     public $mese_fatturazione;
@@ -42,6 +45,9 @@ class Mostra extends Component
 
         $this->fatturazione_tipo = $this->cliente->fatturazione_tipo;
         $this->mese_fatturazione  = $this->cliente->mese_fatturazione;
+        $this->minutiIntervento = $this->cliente->minuti_intervento;
+        $this->minutiInterventoMese1 = $this->cliente->minuti_intervento_mese1;
+        $this->minutiInterventoMese2 = $this->cliente->minuti_intervento_mese2;
 
         $this->modificaMesi['cliente'] = array_fill_keys(
             $this->parseMesi($this->cliente->mesi_visita),
@@ -115,6 +121,23 @@ class Mostra extends Component
 
         $this->modificaMesiVisibile[$chiave] = false;
         $this->dispatch('toast', type: 'success', message: 'Mesi Salvati con successo!');
+    }
+
+    public function salvaMinutiVisita(): void
+    {
+        $this->validate([
+            'minutiIntervento' => 'nullable|integer|min:0|max:1440',
+            'minutiInterventoMese1' => 'nullable|integer|min:0|max:1440',
+            'minutiInterventoMese2' => 'nullable|integer|min:0|max:1440',
+        ]);
+
+        $this->cliente->update([
+            'minuti_intervento' => $this->minutiIntervento,
+            'minuti_intervento_mese1' => $this->minutiInterventoMese1,
+            'minuti_intervento_mese2' => $this->minutiInterventoMese2,
+        ]);
+
+        $this->dispatch('toast', type: 'success', message: 'Minuti visita aggiornati.');
     }
 
     public function vaiAiPresidi($sedeId = null)

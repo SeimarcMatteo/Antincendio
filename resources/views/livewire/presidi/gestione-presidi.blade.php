@@ -23,10 +23,15 @@
     <hr class="my-8 border-t">
 
     {{-- =================== IMPORT DA DOCX =================== --}}
-    <h2 class="text-xl font-semibold text-red-600 mb-4">
-        <i class="fa fa-upload mr-1"></i> Importa Presidi da File Word (.docx)
-    </h2>
-    @livewire('presidi.importa-presidi', ['clienteId' => $cliente->id, 'sedeId' => $sede->id ?? null])
+    <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xl font-semibold text-red-600">
+                <i class="fa fa-upload mr-1"></i> Importa Presidi da File Word (.docx)
+            </h2>
+            <span class="text-xs text-gray-500">Step 1: carica → Step 2: verifica → Step 3: importa</span>
+        </div>
+        @livewire('presidi.importa-presidi', ['clienteId' => $cliente->id, 'sedeId' => $sede->id ?? null])
+    </div>
 
     <hr class="my-8 p-2 border-t">
 
@@ -53,12 +58,12 @@
     @if($presidi->isEmpty())
         <div class="text-gray-500 italic">Nessun presidio registrato per questa categoria.</div>
     @else
-        <div class="overflow-x-auto mb-6">
+        <div class="overflow-x-auto mb-6 max-h-[70vh] border border-gray-200 rounded-lg">
             @php
                 $isEst = ($categoriaAttiva === 'Estintore');
             @endphp
 
-            <table class="w-full table-auto text-sm text-gray-800 border border-gray-300 shadow-sm rounded-lg">
+            <table class="w-full table-auto text-sm text-gray-800">
                 <colgroup>
                     <col style="width:70px">      {{-- # --}}
                     <col>                         {{-- Ubicazione --}}
@@ -83,7 +88,7 @@
                     @endif
                 </colgroup>
 
-                <thead class="bg-red-600 text-white text-left">
+                <thead class="bg-red-600 text-white text-left sticky top-0 z-10">
                     <tr class="whitespace-nowrap">
                         <th class="px-2 py-1">#</th>
                         <th class="px-2 py-1">Ubicazione</th>

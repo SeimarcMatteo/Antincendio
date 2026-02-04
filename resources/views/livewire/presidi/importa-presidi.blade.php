@@ -38,12 +38,14 @@
         @endphp
 
         <div class="mt-4">
-            <h3 class="text-lg font-semibold mb-2">Anteprima presidi rilevati</h3>
-            <div class="mb-2 text-xs text-gray-600">
-                Totale: {{ $anteprimaTot }} | Mancanti: {{ $anteprimaMissing }} | Righe gialle: dati obbligatori mancanti
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-lg font-semibold">Anteprima presidi rilevati</h3>
+                <div class="text-xs text-gray-600">
+                    Totale: {{ $anteprimaTot }} | Mancanti: {{ $anteprimaMissing }} | Righe gialle: dati obbligatori mancanti
+                </div>
             </div>
 
-            <div class="overflow-x-auto border rounded shadow-sm">
+            <div class="overflow-x-auto border rounded shadow-sm max-h-[60vh]">
                 <table class="min-w-full table-fixed text-sm text-left text-gray-800">
                     <colgroup>
                         <col style="width: 70px">   {{-- Prog. --}}
@@ -62,7 +64,7 @@
                         <col style="width: 150px">  {{-- Sostituzione --}}
                         <col style="width: 60px">   {{-- Azioni/Esito --}}
                     </colgroup>
-                    <thead class="bg-gray-200">
+                    <thead class="bg-gray-200 sticky top-0 z-10">
                         <tr>
                             <th class="px-2 py-1 w-20">Prog.</th>
                             <th class="px-2 py-1 w-28">Categoria</th>
@@ -287,7 +289,7 @@
             });
         @endphp
 
-        <div class="overflow-x-auto border rounded shadow-sm">
+        <div class="overflow-x-auto border rounded shadow-sm max-h-[70vh]">
             <div class="mb-2 text-xs text-gray-600 px-2 pt-2">
                 Totale: {{ $salvatiTot }} | Mancanti: {{ $salvatiMissing }} | Righe gialle: dati obbligatori mancanti
             </div>
@@ -309,7 +311,7 @@
                     <col style="width: 150px">  {{-- Sostituzione --}}
                     <col style="width: 60px">   {{-- Azioni/Esito --}}
                 </colgroup>
-                <thead class="bg-gray-100">
+                <thead class="bg-gray-100 sticky top-0 z-10">
                     <tr>
                         <th class="px-2 py-1 w-8"></th>
                         <th class="px-2 py-1 w-28">Categoria</th>
