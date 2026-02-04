@@ -8,6 +8,8 @@ use App\Models\Sede;
 use App\Models\Presidio;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ImportaPresidiMassivo extends Component
 {
@@ -154,10 +156,16 @@ class ImportaPresidiMassivo extends Component
             if ($row['status'] !== 'ok') continue;
             $file = $this->files[$row['index']] ?? null;
             if (!$file) continue;
-            $path = $file->store('import_massivo', 'local');
+            $ext = $file->getClientOriginalExtension() ?: 'docx';
+            $name = Str::uuid()->toString().'.'.$ext;
+            $path = $file->storeAs('import_massivo', $name, 'local');
+            if (!Storage::disk('local')->exists($path)) {
+                $this->fileErrors[] = "File {$row['name']}: salvataggio non riuscito.";
+                continue;
+            }
             $sedeId = $row['sede_id'] === 'principal' ? null : (int)$row['sede_id'];
             ImportPresidiDocxJob::dispatch(
-                storage_path('app/'.$path),
+                $path,
                 (int)$row['cliente_id'],
                 $sedeId,
                 $row['azione'] ?? 'skip_if_exists'
