@@ -15,7 +15,7 @@ class ImportaPresidiMassivo extends Component
     public array $files = [];
     public array $fileRows = [];
     public array $clientiInput = [];
-    public array $errors = [];
+    public array $fileErrors = [];
 
     public function updatedFiles(): void
     {
@@ -24,7 +24,7 @@ class ImportaPresidiMassivo extends Component
 
     public function prepareFiles(): void
     {
-        $this->errors = [];
+        $this->fileErrors = [];
         $this->fileRows = [];
 
         if (empty($this->files)) return;
@@ -57,13 +57,13 @@ class ImportaPresidiMassivo extends Component
 
             if (!$code4) {
                 $row['status'] = 'no_code';
-                $this->errors[] = "File {$name}: codice 4 cifre non trovato.";
+                $this->fileErrors[] = "File {$name}: codice 4 cifre non trovato.";
             } elseif (!isset($map[$code4])) {
                 $row['status'] = 'no_match';
-                $this->errors[] = "File {$name}: nessun cliente con codice esterno che termina per {$code4}.";
+                $this->fileErrors[] = "File {$name}: nessun cliente con codice esterno che termina per {$code4}.";
             } elseif (count($map[$code4]) > 1) {
                 $row['status'] = 'ambiguous';
-                $this->errors[] = "File {$name}: più clienti con codice esterno che termina per {$code4}.";
+                $this->fileErrors[] = "File {$name}: più clienti con codice esterno che termina per {$code4}.";
             } else {
                 $cliente = $map[$code4][0];
                 $row['cliente_id'] = $cliente->id;
@@ -138,7 +138,7 @@ class ImportaPresidiMassivo extends Component
         }
 
         $this->dispatch('toast', type: 'success', message: 'Import massivo avviato in coda.');
-        $this->reset(['files','fileRows','clientiInput','errors']);
+        $this->reset(['files','fileRows','clientiInput','fileErrors']);
     }
 
     public function render()

@@ -23,11 +23,11 @@
         </div>
     </div>
 
-    @if($errors)
+    @if($fileErrors)
         <div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded">
             <div class="font-semibold mb-1">Problemi riscontrati:</div>
             <ul class="list-disc pl-5 text-sm">
-                @foreach($errors as $e)
+                @foreach($fileErrors as $e)
                     <li>{{ $e }}</li>
                 @endforeach
             </ul>
