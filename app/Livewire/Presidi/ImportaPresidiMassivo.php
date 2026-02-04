@@ -45,8 +45,7 @@ class ImportaPresidiMassivo extends Component
 
         foreach ($this->files as $i => $file) {
             $name = $file->getClientOriginalName();
-            preg_match('/\b(\d{4})\b/', $name, $m);
-            $code4 = $m[1] ?? null;
+            $code4 = $this->extractCode4FromFilename($name);
             $row = [
                 'index' => $i,
                 'name' => $name,
@@ -79,7 +78,7 @@ class ImportaPresidiMassivo extends Component
 
                 $this->clientiInput[$cliente->id] = $this->clientiInput[$cliente->id] ?? [
                     'nome' => $cliente->nome,
-                    'mesi_visita' => $cliente->mesi_visita ?? [],
+                    'mesi_visita' => $this->normalizeMesiForCheckboxes($cliente->mesi_visita ?? []),
                     'minuti_intervento' => $cliente->minuti_intervento,
                     'minuti_intervento_mese1' => $cliente->minuti_intervento_mese1,
                     'minuti_intervento_mese2' => $cliente->minuti_intervento_mese2,
@@ -109,8 +108,15 @@ class ImportaPresidiMassivo extends Component
         foreach ($this->clientiInput as $id => $data) {
             $cliente = Cliente::find($id);
             if (!$cliente) continue;
+            $mesi = collect($data['mesi_visita'] ?? [])
+                ->filter(fn($v) => $v)
+                ->keys()
+                ->map(fn($m) => (int)$m)
+                ->sort()
+                ->values()
+                ->all();
             $cliente->update([
-                'mesi_visita' => array_values(array_filter($data['mesi_visita'] ?? [])),
+                'mesi_visita' => $mesi,
                 'minuti_intervento' => $data['minuti_intervento'] ?? null,
                 'minuti_intervento_mese1' => $data['minuti_intervento_mese1'] ?? null,
                 'minuti_intervento_mese2' => $data['minuti_intervento_mese2'] ?? null,
@@ -166,5 +172,46 @@ class ImportaPresidiMassivo extends Component
     {
         return view('livewire.presidi.importa-presidi-massivo')
             ->layout('layouts.app', ['title' => 'Import massivo presidi']);
+    }
+
+    private function extractCode4FromFilename(string $name): ?string
+    {
+        preg_match_all('/\d+/', $name, $m);
+        if (empty($m[0])) return null;
+        $raw = end($m[0]);
+        if ($raw === '') return null;
+        if (strlen($raw) > 4) {
+            $raw = substr($raw, -4);
+        }
+        return str_pad($raw, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function normalizeMesiForCheckboxes($raw): array
+    {
+        $map = ['gen'=>1,'feb'=>2,'mar'=>3,'apr'=>4,'mag'=>5,'giu'=>6,'lug'=>7,'ago'=>8,'set'=>9,'ott'=>10,'nov'=>11,'dic'=>12];
+        $out = [];
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $raw = $decoded;
+            } else {
+                $raw = array_map('trim', explode(',', $raw));
+            }
+        }
+        if (is_array($raw)) {
+            if (array_values($raw) === $raw) {
+                foreach ($raw as $v) {
+                    $m = is_numeric($v) ? (int)$v : ($map[mb_strtolower((string)$v)] ?? null);
+                    if ($m && $m >= 1 && $m <= 12) $out[$m] = true;
+                }
+            } else {
+                foreach ($raw as $k => $v) {
+                    if (!$v) continue;
+                    $m = is_numeric($k) ? (int)$k : ($map[mb_strtolower((string)$k)] ?? null);
+                    if ($m && $m >= 1 && $m <= 12) $out[$m] = true;
+                }
+            }
+        }
+        return $out;
     }
 }
