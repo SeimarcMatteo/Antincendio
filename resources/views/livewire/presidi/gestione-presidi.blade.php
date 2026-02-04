@@ -63,6 +63,7 @@
                         <col style="width:130px"> {{-- Acquisto --}}
                         <col style="width:150px"> {{-- Scadenza Presidio --}}
                         <col style="width:130px"> {{-- Serbatoio --}}
+                        <col style="width:110px"> {{-- Marca Serbatoio --}}
                         <col style="width:130px"> {{-- Ultima Revisione --}}
                         <col style="width:130px"> {{-- Revisione --}}
                         <col style="width:130px"> {{-- Collaudo --}}
@@ -88,6 +89,7 @@
                             <th class="px-2 py-1">Acquisto</th>
                             <th class="px-2 py-1">Scadenza Presidio</th>
                             <th class="px-2 py-1">Serbatoio</th>
+                            <th class="px-2 py-1">Marca Serb.</th>
                             <th class="px-2 py-1">Ultima Revisione</th>
                             <th class="px-2 py-1">Revisione</th>
                             <th class="px-2 py-1">Collaudo</th>
@@ -205,6 +207,34 @@
                                         <span class="inline-block min-w-[110px]">
                                             {{ $presidio->data_serbatoio ? \Carbon\Carbon::parse($presidio->data_serbatoio)->format('d.m.Y') : '' }}
                                         </span>
+                                    @endif
+                                </td>
+
+                                {{-- Marca Serbatoio --}}
+                                <td class="px-2 py-1">
+                                    @if($presidio->id === $presidioInModifica)
+                                        <div class="flex items-center gap-2">
+                                            <input type="text"
+                                                wire:model.defer="presidiData.{{ $presidio->id }}.marca_serbatoio"
+                                                wire:change="ricalcolaDate({{ $presidio->id }})"
+                                                class="form-input w-full rounded-md border-gray-300 text-sm" />
+                                            <button type="button"
+                                                wire:click="$set('presidiData.{{ $presidio->id }}.marca_serbatoio','MB')"
+                                                class="px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">
+                                                MB
+                                            </button>
+                                        </div>
+                                    @else
+                                        @php $marca = $presidio->marca_serbatoio ?? null; @endphp
+                                        @if($marca === 'MB')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">
+                                                MB
+                                            </span>
+                                        @else
+                                            <span class="inline-block min-w-[80px]">
+                                                {{ $marca ?? '' }}
+                                            </span>
+                                        @endif
                                     @endif
                                 </td>
 
@@ -398,6 +428,20 @@
                     <input type="date" wire:model="dataSerbatoio"
                         class="mt-1 w-full rounded border-gray-300 shadow-sm">
                     @error('dataSerbatoio') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Marca Serbatoio</label>
+                    <div class="mt-1 flex items-center gap-2">
+                        <input type="text" wire:model="marcaSerbatoio"
+                            class="w-full rounded border-gray-300 shadow-sm">
+                        <button type="button"
+                            wire:click="$set('marcaSerbatoio','MB')"
+                            class="px-3 py-2 text-xs rounded bg-gray-200 hover:bg-gray-300">
+                            MB
+                        </button>
+                    </div>
+                    @error('marcaSerbatoio') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
 
                 <div>

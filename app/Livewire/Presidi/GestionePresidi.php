@@ -25,6 +25,7 @@ class GestionePresidi extends Component
     public $anomalia3 = false;
     public $note;
     public $dataSerbatoio;
+    public ?string $marcaSerbatoio = null;
     public ?string $dataUltimaRevisione = null;
     public $flagPreventivo = false;
     public $descrizione;
@@ -51,6 +52,7 @@ class GestionePresidi extends Component
         'anomalia3' => 'nullable|boolean',
         'note' => 'nullable|string|max:1000',
         'dataSerbatoio' => 'required_if:categoria,Estintore|date',
+        'marcaSerbatoio' => 'nullable|string|max:20',
         'dataUltimaRevisione' => 'nullable|date',
         'flagPreventivo' => 'nullable|boolean',
         'descrizione' => 'nullable|string|max:255',
@@ -163,6 +165,7 @@ public function ricalcolaDate(int $id): void
         'data_acquisto'         => $this->presidi->firstWhere('id', $id)?->data_acquisto,
         'scadenza_presidio'     => $this->presidi->firstWhere('id', $id)?->scadenza_presidio,
         'data_ultima_revisione' => $this->presidi->firstWhere('id', $id)?->data_ultima_revisione, // <— aggiunto
+        'marca_serbatoio' => $this->presidi->firstWhere('id', $id)?->marca_serbatoio,
     ];
 
     
@@ -190,7 +193,7 @@ public function ricalcolaDate(int $id): void
     $tipo   = \App\Models\TipoEstintore::with('classificazione')->find($tipoId);
     $classi = $tipo?->classificazione;
 
-    $periodoRev    = \App\Livewire\Presidi\ImportaPresidi::pickPeriodoRevisione($serb, $classi, $last);
+    $periodoRev    = \App\Livewire\Presidi\ImportaPresidi::pickPeriodoRevisione($serb, $classi, $last, $row['marca_serbatoio'] ?? null);
     $baseRevisione = $last ?: $serb;
     $scadRevisione = \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($baseRevisione, $periodoRev);$scadCollaudo  = !empty($classi?->anni_collaudo)
         ? \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($serb, (int)$classi->anni_collaudo)
@@ -301,6 +304,7 @@ public function ricalcolaDate(int $id): void
             'flag_anomalia3' => $this->anomalia3,
             'note' => $this->note,
             'data_serbatoio' => $this->dataSerbatoio,
+            'marca_serbatoio' => $this->marcaSerbatoio,
             'data_ultima_revisione' => $this->dataUltimaRevisione,
             'flag_preventivo' => $this->flagPreventivo,
             'descrizione' => $this->descrizione,
@@ -319,7 +323,7 @@ public function ricalcolaDate(int $id): void
     
         // reset ONLY dei campi di form
         $this->reset([
-            'ubicazione','tipoContratto','tipoEstintore','dataSerbatoio','flagPreventivo',
+            'ubicazione','tipoContratto','tipoEstintore','dataSerbatoio','marcaSerbatoio','flagPreventivo',
             'anomalia1','anomalia2','anomalia3','note','descrizione',
             'isAcquisto','dataAcquisto','scadenzaPresidio','dataUltimaRevisione',
         ]);

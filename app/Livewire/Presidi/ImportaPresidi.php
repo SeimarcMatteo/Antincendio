@@ -219,7 +219,12 @@ private function ricalcolaDatePerRiga(array &$row): void
     $tipo = TipoEstintore::with('classificazione')->find($tipoId);
     $classi = $tipo?->classificazione;
 
-    $periodoRev    = self::pickPeriodoRevisione($dataSerb, $classi, $row['data_ultima_revisione'] ?? null);
+    $periodoRev    = self::pickPeriodoRevisione(
+        $dataSerb,
+        $classi,
+        $row['data_ultima_revisione'] ?? null,
+        $row['marca_serbatoio'] ?? null
+    );
     $baseRevisione = ($row['data_ultima_revisione'] ?? null) ?: $dataSerb;
     $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
      
@@ -294,6 +299,21 @@ public function ricalcola(string $scope, int $index): void
         }
 
         return null;
+    }
+
+    private static function parseMarcaSerbatoio(?string $txt): ?string
+    {
+        $txt = trim((string)$txt);
+        if ($txt === '') return null;
+        if (preg_match('/^\s*([A-Z]{1,10})\b/u', mb_strtoupper($txt), $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
+    private static function isMarcaMb(?string $marca): bool
+    {
+        return mb_strtoupper(trim((string)$marca)) === 'MB';
     }
 
     private function caricaPresidiSalvati(): void
@@ -500,12 +520,14 @@ public function ricalcola(string $scope, int $index): void
                     // date specifiche
                     $dataAcquisto     = $parseData($r['anno_acquisto']     ?? null);
                     $scadPresidio     = $parseData($r['scadenza_presidio'] ?? null);
-                    $dataSerb         = $parseData($r['anno_serbatoio']    ?? null);
+                    $dataSerbatoioRaw = $r['anno_serbatoio'] ?? null;
+                    $dataSerb         = $parseData($dataSerbatoioRaw);
+                    $marcaSerbatoio   = self::parseMarcaSerbatoio($dataSerbatoioRaw);
                     $dataUltimaRevisione = self::parseDataCell($r['riempimento_revisione'] ?? null); // <- USATA per la prossima revisione
                     $lastCollaudoRev     = self::parseDataCell($r['collaudo_revisione']   ?? null); // info (non usata)
                     
                     // calcoli da serbatoio
-                    $periodoRev    = self::pickPeriodoRevisione($dataSerb, $classi, $dataUltimaRevisione);
+                    $periodoRev    = self::pickPeriodoRevisione($dataSerb, $classi, $dataUltimaRevisione, $marcaSerbatoio);
                     $baseRevisione = $dataUltimaRevisione ?: $dataSerb;
                     $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
                     $scadCollaudo  = !empty($classi?->anni_collaudo)
@@ -545,6 +567,7 @@ public function ricalcola(string $scope, int $index): void
 
                         // SERBATOIO-BASED
                         'data_serbatoio'    => $dataSerb,
+                        'marca_serbatoio'   => $marcaSerbatoio,
                         'data_ultima_revisione'  => $dataUltimaRevisione, 
                         // Scadenze “teoriche”
                         'data_revisione'    => $revAligned ?? $scadRevisione,
@@ -637,7 +660,7 @@ public function ricalcola(string $scope, int $index): void
                     'ubicazione','tipo_contratto','tipo_estintore','tipo_estintore_id',
                     'flag_anomalia1','flag_anomalia2','flag_anomalia3','note','data_acquisto','scadenza_presidio', 
                     'data_serbatoio','data_revisione','data_collaudo',
-                    'data_fine_vita','data_sostituzione','data_ultima_revisione',
+                    'data_fine_vita','data_sostituzione','data_ultima_revisione','marca_serbatoio',
                 ])
             );
 
@@ -821,12 +844,19 @@ public function ricalcola(string $scope, int $index): void
         // Altrimenti: mese visita immediatamente precedente
         return self::previousVisitBefore($dueC->format('Y-m-d'), $months);
     }
-    public static function pickPeriodoRevisione(?string $dataSerbatoio, $classi, ?string $dataUltimaRevisione = null): ?int
+    public static function pickPeriodoRevisione(?string $dataSerbatoio, $classi, ?string $dataUltimaRevisione = null, ?string $marcaSerbatoio = null): ?int
     {
         if (!$classi) return null;
     
         $cutover = Carbon::parse(self::CUTOFF)->startOfDay();
         $after   = false;
+
+        // Caso speciale: marca MB con serbatoio prima del cutoff → sempre "prima"
+        if (self::isMarcaMb($marcaSerbatoio) && $dataSerbatoio) {
+            if (Carbon::parse($dataSerbatoio)->startOfDay()->lt($cutover)) {
+                return (int) $classi->anni_revisione_prima;
+            }
+        }
     
         if ($dataSerbatoio && Carbon::parse($dataSerbatoio)->startOfDay()->gte($cutover)) {
             $after = true;

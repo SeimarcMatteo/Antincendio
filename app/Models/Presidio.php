@@ -18,7 +18,7 @@ class Presidio extends Model
     protected $fillable = [
         'cliente_id', 'sede_id', 'categoria', 'progressivo',
         'ubicazione', 'tipo_contratto', 'tipo_estintore_id',
-        'data_serbatoio', 'data_ultima_revisione',
+        'data_serbatoio', 'marca_serbatoio', 'data_ultima_revisione',
         'data_revisione', 'data_collaudo',
         'data_fine_vita', 'data_sostituzione',
         'flag_anomalia1', 'flag_anomalia2', 'flag_anomalia3',
@@ -114,7 +114,7 @@ class Presidio extends Model
         $lastRev  = $this->data_ultima_revisione ? Carbon::parse($this->data_ultima_revisione)->startOfMonth() : null;
 
         // 1) Periodo revisione determinato dal serbatoio (se manca, assumo "PRIMA" come fallback sicuro)
-        $periodoRev = $this->pickPeriodoRevisione($dataSerb, $classi);
+        $periodoRev = $this->pickPeriodoRevisione($dataSerb, $classi, $this->marca_serbatoio);
 
         // 2) Revisione: base = ultima revisione (se esiste) altrimenti serbatoio
         $baseRevisione = $lastRev ?: $dataSerb; // almeno una delle due è presente (testato sopra)
@@ -161,11 +161,16 @@ class Presidio extends Model
      * Determina il periodo revisione in anni in base alla data serbatoio vs cutoff.
      * Se data_serbatoio manca, usa anni_revisione_prima come fallback conservativo.
      */
-    private function pickPeriodoRevisione(?Carbon $dataSerb, ClassificazioneEstintore $classi): ?int
+    private function pickPeriodoRevisione(?Carbon $dataSerb, ClassificazioneEstintore $classi, ?string $marcaSerbatoio = null): ?int
     {
         $cutover = Carbon::parse(self::CUTOFF)->startOfDay();
 
         $after = false;
+
+        // Caso speciale: marca MB con serbatoio prima del cutoff → sempre "prima"
+        if ($this->isMarcaMb($marcaSerbatoio) && $dataSerb && $dataSerb->lt($cutover)) {
+            return (int) $classi->anni_revisione_prima;
+        }
 
         // condizione su data serbatoio
         if ($dataSerb && $dataSerb->gte($cutover)) {
@@ -185,6 +190,11 @@ class Presidio extends Model
         }
 
         return (int) $classi->anni_revisione_prima;
+    }
+
+    private function isMarcaMb(?string $marca): bool
+    {
+        return mb_strtoupper(trim((string)$marca)) === 'MB';
     }
 
 

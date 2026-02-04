@@ -45,6 +45,7 @@
                         <col style="width: 170px">  {{-- Tipo --}}
                         <col style="width: 110px">  {{-- Contratto --}}
                         <col style="width: 130px">  {{-- Serbatoio --}}
+                        <col style="width: 90px">   {{-- Marca --}}
                         <col style="width: 130px">  {{-- Revisione --}}
                         <col style="width: 130px">  {{-- Collaudo --}}
                         <col style="width: 130px">  {{-- Fine vita --}}
@@ -61,6 +62,7 @@
                             <th class="px-2 py-1">Tipo</th>
                             <th class="px-2 py-1 w-32">Contratto</th>
                             <th class="px-2 py-1 w-40">Serbatoio&nbsp;<span class="text-red-600">*</span></th>
+                            <th class="px-2 py-1 w-24">Marca</th>
                             <th class="px-2 py-1 w-40">Revisione (all.)</th>
                             <th class="px-2 py-1 w-40">Collaudo (all.)</th>
                             <th class="px-2 py-1 w-40">Fine vita</th>
@@ -138,6 +140,14 @@
                                     @error("anteprima.$r.data_serbatoio")
                                         <span class="text-red-600 text-xs">{{ $message }}</span>
                                     @enderror
+                                </td>
+
+                                {{-- marca serbatoio --}}
+                                <td class="px-2 py-1">
+                                    <input type="text"
+                                        wire:model.defer="anteprima.{{ $r }}.marca_serbatoio"
+                                        wire:change="ricalcola('anteprima', {{ $r }})"
+                                        class="form-input w-20 text-xs">
                                 </td>
 
 
@@ -258,6 +268,7 @@
                     <col style="width: 170px">  {{-- Tipo --}}
                     <col style="width: 110px">  {{-- Contratto --}}
                     <col style="width: 130px">  {{-- Serbatoio --}}
+                    <col style="width: 90px">   {{-- Marca --}}
                     <col style="width: 130px">  {{-- Revisione --}}
                     <col style="width: 130px">  {{-- Collaudo --}}
                     <col style="width: 130px">  {{-- Fine vita --}}
@@ -275,6 +286,7 @@
                         <th class="px-2 py-1 w-20">Prog.</th>
                         <th class="px-2 py-1 w-32">Contratto</th>
                         <th class="px-2 py-1 w-36">Serbatoio</th>
+                        <th class="px-2 py-1 w-24">Marca</th>
                         <th class="px-2 py-1 w-36">Revisione</th>
                         <th class="px-2 py-1 w-36">Collaudo</th>
                         <th class="px-2 py-1 w-36">Fine vita</th>
@@ -349,6 +361,14 @@
                                     wire:model.defer="presidiSalvati.{{ $i }}.data_serbatoio"
                                     wire:change="ricalcola('salvati', {{ $i }})"
                                     class="form-input w-36 text-xs">
+                            </td>
+
+                            {{-- marca serbatoio --}}
+                            <td class="px-2 py-1">
+                                <input type="text"
+                                    wire:model.defer="presidiSalvati.{{ $i }}.marca_serbatoio"
+                                    wire:change="ricalcola('salvati', {{ $i }})"
+                                    class="form-input w-20 text-xs">
                             </td>
 
 
