@@ -294,6 +294,36 @@ public function ricalcola(string $scope, int $index): void
         return $map[$h] ?? $h;
     }
 
+    private static function normHeaderIdranti(string $h): string
+    {
+        $h = mb_strtoupper(trim(preg_replace('/\s+/', ' ', $h)));
+        $map = [
+            'N' => 'numero',
+            'UBICAZIONE' => 'ubicazione',
+            'NOTE' => 'note',
+            'MANCA CARTELLO' => 'anomalia_cartello',
+            'MANCA LANCIA O DA SOSTITUIRE' => 'anomalia_lancia',
+            'LASTRA S.CRASH DANNEGG O MANCANTE INDICARE MISURE' => 'anomalia_lastra',
+        ];
+        return $map[$h] ?? $h;
+    }
+
+    private static function normHeaderPorte(string $h): string
+    {
+        $h = mb_strtoupper(trim(preg_replace('/\s+/', ' ', $h)));
+        $map = [
+            'N' => 'numero',
+            'UBICAZIONE' => 'ubicazione',
+            'MALFUNZIONAMENTI' => 'note',
+            'ANTE (1 O 2)' => 'tipo_contratto',
+            'ANTE  (1 O 2)' => 'tipo_contratto',
+            'MANIGLIONE NON CE' => 'anomalia_maniglione',
+            'TIRATA MOLLA' => 'anomalia_molla',
+            'NUMERAZIONE' => 'anomalia_numerazione',
+        ];
+        return $map[$h] ?? $h;
+    }
+
     public static function parseDataCell(?string $txt): ?string
     {
         $txt = trim((string)$txt);
@@ -428,27 +458,50 @@ public function ricalcola(string $scope, int $index): void
 
                 $headersMap = null;
 
+                $tableType = null;
                 foreach ($element->getRows() as $row) {
                     $cells = $row->getCells();
                     if (!count($cells)) continue;
 
                     $vals = array_map(fn($c) => self::cellText($c), $cells);
 
+                    if ($tableType === null) {
+                        $joined = mb_strtoupper(implode(' ', $vals));
+                        if (str_contains($joined, 'IDRANTI')) $tableType = 'idranti';
+                        if (str_contains($joined, 'PORTE')) $tableType = 'porte';
+                    }
+
                     // riconosci header
                     if ($headersMap === null) {
-                        $score = 0;
-                        foreach ($vals as $v) {
-                            $hv = $normHeader($v);
-                            if (in_array($hv, [
-                                'numero','ubicazione','tipo_contratto','kglt','classe',
-                                'anno_acquisto','scadenza_presidio','anno_serbatoio',
-                                'riempimento_revisione','collaudo_revisione'
-                            ], true)) $score++;
-                        }
-                        if ($score >= 3) {
-                            $headersMap = [];
-                            foreach ($vals as $i => $v) $headersMap[$i] = $normHeader($v);
-                            continue;
+                        if ($tableType === 'idranti') {
+                            $up = array_map(fn($v)=>mb_strtoupper(trim($v)), $vals);
+                            if (in_array('N', $up, true) && in_array('UBICAZIONE', $up, true)) {
+                                $headersMap = [];
+                                foreach ($vals as $i => $v) $headersMap[$i] = self::normHeaderIdranti($v);
+                                continue;
+                            }
+                        } elseif ($tableType === 'porte') {
+                            $up = array_map(fn($v)=>mb_strtoupper(trim($v)), $vals);
+                            if (in_array('N', $up, true) && in_array('UBICAZIONE', $up, true)) {
+                                $headersMap = [];
+                                foreach ($vals as $i => $v) $headersMap[$i] = self::normHeaderPorte($v);
+                                continue;
+                            }
+                        } else {
+                            $score = 0;
+                            foreach ($vals as $v) {
+                                $hv = $normHeader($v);
+                                if (in_array($hv, [
+                                    'numero','ubicazione','tipo_contratto','kglt','classe',
+                                    'anno_acquisto','scadenza_presidio','anno_serbatoio',
+                                    'riempimento_revisione','collaudo_revisione'
+                                ], true)) $score++;
+                            }
+                            if ($score >= 3) {
+                                $headersMap = [];
+                                foreach ($vals as $i => $v) $headersMap[$i] = $normHeader($v);
+                                continue;
+                            }
                         }
                     }
                     if ($headersMap === null) continue;
@@ -460,13 +513,66 @@ public function ricalcola(string $scope, int $index): void
                         $r[$k] = $v;
                     }
 
-                    // must-have: numero + almeno ubicazione/contratto
+                    // must-have: numero
                     $numero = $r['numero'] ?? null;
                     if (!is_numeric($numero)) continue;
 
                     $ubic      = $r['ubicazione']      ?? '';
                     $contratto = $r['tipo_contratto']   ?? '';
-                 
+
+                    if ($tableType === 'idranti') {
+                        $note = $r['note'] ?? null;
+                        $flag1 = !empty($r['anomalia_cartello'] ?? null);
+                        $flag2 = !empty($r['anomalia_lancia'] ?? null);
+                        $flag3 = !empty($r['anomalia_lastra'] ?? null);
+
+                        $this->anteprima[] = [
+                            'categoria'         => 'Idrante',
+                            'progressivo'       => (int)$numero,
+                            'ubicazione'        => $ubic,
+                            'tipo_contratto'    => $contratto,
+                            'tipo_estintore'    => null,
+                            'tipo_estintore_id' => null,
+                            'note'              => $note,
+                            'flag_anomalia1'    => $flag1,
+                            'flag_anomalia2'    => $flag2,
+                            'flag_anomalia3'    => $flag3,
+                            'data_serbatoio'    => null,
+                            'data_revisione'    => null,
+                            'data_collaudo'     => null,
+                            'data_fine_vita'    => null,
+                            'data_sostituzione' => null,
+                        ];
+                        continue;
+                    }
+
+                    if ($tableType === 'porte') {
+                        $note = $r['note'] ?? null;
+                        $flag1 = !empty($r['anomalia_maniglione'] ?? null);
+                        $flag2 = !empty($r['anomalia_molla'] ?? null);
+                        $flag3 = !empty($r['anomalia_numerazione'] ?? null);
+                        $contratto = $r['tipo_contratto'] ?? $contratto;
+
+                        $this->anteprima[] = [
+                            'categoria'         => 'Porta',
+                            'progressivo'       => (int)$numero,
+                            'ubicazione'        => $ubic,
+                            'tipo_contratto'    => $contratto,
+                            'tipo_estintore'    => null,
+                            'tipo_estintore_id' => null,
+                            'note'              => $note,
+                            'flag_anomalia1'    => $flag1,
+                            'flag_anomalia2'    => $flag2,
+                            'flag_anomalia3'    => $flag3,
+                            'data_serbatoio'    => null,
+                            'data_revisione'    => null,
+                            'data_collaudo'     => null,
+                            'data_fine_vita'    => null,
+                            'data_sostituzione' => null,
+                        ];
+                        continue;
+                    }
+
                     $tipoRaw   = trim((($r['kglt'] ?? '') . ' ' . ($r['classe'] ?? '')));
                     $joinedUp  = mb_strtoupper(implode(' ', $vals));
                     
@@ -556,6 +662,7 @@ public function ricalcola(string $scope, int $index): void
     {
         // validazione minima
         foreach ($this->anteprima as $i => $row) {
+            if (($row['categoria'] ?? '') !== 'Estintore') continue;
             if (!$row['data_serbatoio']) {
                 $this->addError("anteprima.$i.data_serbatoio", 'Obbligatorio');
             }
@@ -594,10 +701,12 @@ public function ricalcola(string $scope, int $index): void
                 ->when($this->sedeId, fn ($q) => $q->where('sede_id', $this->sedeId));
                 if (!$tutti) {      // import selezionati
                     $mancanti = ImportPresidio::whereIn('id', $this->selezionati)
+                                 ->where('categoria', 'Estintore')
                                  ->whereNull('tipo_estintore_id')->count();
                 } else {            // importa tutti
                     $mancanti = ImportPresidio::where('cliente_id', $this->clienteId)
                                  ->when($this->sedeId, fn($q)=>$q->where('sede_id',$this->sedeId))
+                                 ->where('categoria', 'Estintore')
                                  ->whereNull('tipo_estintore_id')->count();
                 }
                 

@@ -90,7 +90,9 @@
                     <tbody>
                         @foreach($anteprima as $r => $row)
                             @php
-                                $missing = empty($row['data_serbatoio']) || empty($row['tipo_estintore_id']);
+                                $missing = ($row['categoria'] ?? '') === 'Estintore'
+                                    ? (empty($row['data_serbatoio']) || empty($row['tipo_estintore_id']))
+                                    : false;
                             @endphp
                             <tr wire:key="preview-{{ $r }}"
                                 class="{{ $loop->even ? 'bg-gray-50' : '' }} {{ $missing ? 'bg-yellow-100' : '' }}">
@@ -337,10 +339,12 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($rows as $i => $p)
-                        @php
-                            $missing = empty($p['data_serbatoio']) || empty($p['tipo_estintore_id']);
-                        @endphp
+                        @foreach($rows as $i => $p)
+                            @php
+                                $missing = ($p['categoria'] ?? '') === 'Estintore'
+                                    ? (empty($p['data_serbatoio']) || empty($p['tipo_estintore_id']))
+                                    : false;
+                            @endphp
                         <tr wire:key="row-{{ $p['id'] }}"
                             class="{{ $loop->even ? 'bg-gray-50' : '' }} {{ $missing ? 'bg-yellow-100' : '' }}">
 

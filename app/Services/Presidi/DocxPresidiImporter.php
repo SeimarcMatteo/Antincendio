@@ -38,6 +38,7 @@ class DocxPresidiImporter
                 if (!$element instanceof Table) continue;
 
                 $headersMap = null;
+                $tableType = null;
 
                 foreach ($element->getRows() as $row) {
                     $cells = $row->getCells();
@@ -45,22 +46,44 @@ class DocxPresidiImporter
 
                     $vals = array_map(fn($c) => self::cellText($c), $cells);
 
+                    if ($tableType === null) {
+                        $joined = mb_strtoupper(implode(' ', $vals));
+                        if (str_contains($joined, 'IDRANTI')) $tableType = 'idranti';
+                        if (str_contains($joined, 'PORTE')) $tableType = 'porte';
+                    }
+
                     if ($headersMap === null) {
-                        $score = 0;
-                        foreach ($vals as $v) {
-                            $hv = self::normalizzaHeader($v);
-                            if (in_array($hv, [
-                                'numero','ubicazione','tipo_contratto','kglt','classe',
-                                'anno_acquisto','scadenza_presidio','anno_serbatoio',
-                                'riempimento_revisione','collaudo_revisione'
-                            ], true)) {
-                                $score++;
+                        if ($tableType === 'idranti') {
+                            $up = array_map(fn($v)=>mb_strtoupper(trim($v)), $vals);
+                            if (in_array('N', $up, true) && in_array('UBICAZIONE', $up, true)) {
+                                $headersMap = [];
+                                foreach ($vals as $i => $v) $headersMap[$i] = self::normHeaderIdranti($v);
+                                continue;
                             }
-                        }
-                        if ($score >= 3) {
-                            $headersMap = [];
-                            foreach ($vals as $i => $v) $headersMap[$i] = self::normalizzaHeader($v);
-                            continue;
+                        } elseif ($tableType === 'porte') {
+                            $up = array_map(fn($v)=>mb_strtoupper(trim($v)), $vals);
+                            if (in_array('N', $up, true) && in_array('UBICAZIONE', $up, true)) {
+                                $headersMap = [];
+                                foreach ($vals as $i => $v) $headersMap[$i] = self::normHeaderPorte($v);
+                                continue;
+                            }
+                        } else {
+                            $score = 0;
+                            foreach ($vals as $v) {
+                                $hv = self::normalizzaHeader($v);
+                                if (in_array($hv, [
+                                    'numero','ubicazione','tipo_contratto','kglt','classe',
+                                    'anno_acquisto','scadenza_presidio','anno_serbatoio',
+                                    'riempimento_revisione','collaudo_revisione'
+                                ], true)) {
+                                    $score++;
+                                }
+                            }
+                            if ($score >= 3) {
+                                $headersMap = [];
+                                foreach ($vals as $i => $v) $headersMap[$i] = self::normalizzaHeader($v);
+                                continue;
+                            }
                         }
                     }
                     if ($headersMap === null) continue;
@@ -76,6 +99,61 @@ class DocxPresidiImporter
 
                     $ubic      = $r['ubicazione'] ?? '';
                     $contratto = $r['tipo_contratto'] ?? '';
+
+                    if ($tableType === 'idranti') {
+                        $note = $r['note'] ?? null;
+                        $flag1 = !empty($r['anomalia_cartello'] ?? null);
+                        $flag2 = !empty($r['anomalia_lancia'] ?? null);
+                        $flag3 = !empty($r['anomalia_lastra'] ?? null);
+
+                        $sedeId = $this->resolveSedeId();
+                        Presidio::updateOrCreate(
+                            [
+                                'cliente_id' => $this->clienteId,
+                                'sede_id'    => $sedeId,
+                                'categoria'  => 'Idrante',
+                                'progressivo'=> (int)$numero,
+                            ],
+                            [
+                                'ubicazione'        => $ubic,
+                                'tipo_contratto'    => $contratto,
+                                'flag_anomalia1'    => $flag1,
+                                'flag_anomalia2'    => $flag2,
+                                'flag_anomalia3'    => $flag3,
+                                'note'              => $note,
+                            ]
+                        );
+                        $importati++;
+                        continue;
+                    }
+
+                    if ($tableType === 'porte') {
+                        $note = $r['note'] ?? null;
+                        $flag1 = !empty($r['anomalia_maniglione'] ?? null);
+                        $flag2 = !empty($r['anomalia_molla'] ?? null);
+                        $flag3 = !empty($r['anomalia_numerazione'] ?? null);
+                        $contratto = $r['tipo_contratto'] ?? $contratto;
+
+                        $sedeId = $this->resolveSedeId();
+                        Presidio::updateOrCreate(
+                            [
+                                'cliente_id' => $this->clienteId,
+                                'sede_id'    => $sedeId,
+                                'categoria'  => 'Porta',
+                                'progressivo'=> (int)$numero,
+                            ],
+                            [
+                                'ubicazione'        => $ubic,
+                                'tipo_contratto'    => $contratto,
+                                'flag_anomalia1'    => $flag1,
+                                'flag_anomalia2'    => $flag2,
+                                'flag_anomalia3'    => $flag3,
+                                'note'              => $note,
+                            ]
+                        );
+                        $importati++;
+                        continue;
+                    }
 
                     $tipoRaw  = trim((($r['kglt'] ?? '') . ' ' . ($r['classe'] ?? '')));
                     $joinedUp = mb_strtoupper(implode(' ', $vals));
@@ -269,6 +347,36 @@ class DocxPresidiImporter
             'RIEMPIMENTO/REVISIONE'      => 'riempimento_revisione',
             'COLLAUDO/ REVISIONE'        => 'collaudo_revisione',
             'COLLAUDO/REVISIONE'         => 'collaudo_revisione',
+        ];
+        return $map[$h] ?? $h;
+    }
+
+    private static function normHeaderIdranti(string $h): string
+    {
+        $h = mb_strtoupper(trim(preg_replace('/\s+/', ' ', $h)));
+        $map = [
+            'N' => 'numero',
+            'UBICAZIONE' => 'ubicazione',
+            'NOTE' => 'note',
+            'MANCA CARTELLO' => 'anomalia_cartello',
+            'MANCA LANCIA O DA SOSTITUIRE' => 'anomalia_lancia',
+            'LASTRA S.CRASH DANNEGG O MANCANTE INDICARE MISURE' => 'anomalia_lastra',
+        ];
+        return $map[$h] ?? $h;
+    }
+
+    private static function normHeaderPorte(string $h): string
+    {
+        $h = mb_strtoupper(trim(preg_replace('/\s+/', ' ', $h)));
+        $map = [
+            'N' => 'numero',
+            'UBICAZIONE' => 'ubicazione',
+            'MALFUNZIONAMENTI' => 'note',
+            'ANTE (1 O 2)' => 'tipo_contratto',
+            'ANTE  (1 O 2)' => 'tipo_contratto',
+            'MANIGLIONE NON CE' => 'anomalia_maniglione',
+            'TIRATA MOLLA' => 'anomalia_molla',
+            'NUMERAZIONE' => 'anomalia_numerazione',
         ];
         return $map[$h] ?? $h;
     }
