@@ -27,6 +27,8 @@ class ImportPresidio extends Model
         'data_sostituzione' => 'date:Y-m-d',
         'data_acquisto' => 'date:Y-m-d',
         'scadenza_presidio' => 'date:Y-m-d',
+        'idrante_sopra_suolo' => 'boolean',
+        'idrante_sotto_suolo' => 'boolean',
     ];
 
 }

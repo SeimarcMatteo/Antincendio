@@ -329,6 +329,20 @@ public function ricalcola(string $scope, int $index): void
         return $map[$h] ?? $h;
     }
 
+    private static function detectTableTypeFromRow(array $vals): ?string
+    {
+        $joined = mb_strtoupper(implode(' ', $vals));
+        if (str_contains($joined, 'IDRANTI')) return 'idranti';
+        if (str_contains($joined, 'PORTE')) return 'porte';
+        if (str_contains($joined, 'NASPO') || str_contains($joined, 'SOPRA SUOLO') || str_contains($joined, 'SOTTO SUOLO') || str_contains($joined, 'ATTACCO VVF')) {
+            return 'idranti';
+        }
+        if (str_contains($joined, 'MANIGLIONE') || str_contains($joined, 'TIRATA MOLLA') || str_contains($joined, 'MALFUNZIONAMENTI') || str_contains($joined, 'ANTE')) {
+            return 'porte';
+        }
+        return null;
+    }
+
     public static function parseDataCell(?string $txt): ?string
     {
         $txt = trim((string)$txt);
@@ -471,23 +485,23 @@ public function ricalcola(string $scope, int $index): void
                     $vals = array_map(fn($c) => self::cellText($c), $cells);
 
                     if ($tableType === null) {
-                        $joined = mb_strtoupper(implode(' ', $vals));
-                        if (str_contains($joined, 'IDRANTI')) $tableType = 'idranti';
-                        if (str_contains($joined, 'PORTE')) $tableType = 'porte';
+                        $tableType = self::detectTableTypeFromRow($vals);
                     }
 
                     // riconosci header
                     if ($headersMap === null) {
                         if ($tableType === 'idranti') {
                             $up = array_map(fn($v)=>mb_strtoupper(trim($v)), $vals);
-                            if (in_array('N', $up, true) && in_array('UBICAZIONE', $up, true)) {
+                            $hasN = (bool) array_filter($up, fn($v)=>preg_match('/^N\\b|^N\\./', $v));
+                            if ($hasN && in_array('UBICAZIONE', $up, true)) {
                                 $headersMap = [];
                                 foreach ($vals as $i => $v) $headersMap[$i] = self::normHeaderIdranti($v);
                                 continue;
                             }
                         } elseif ($tableType === 'porte') {
                             $up = array_map(fn($v)=>mb_strtoupper(trim($v)), $vals);
-                            if (in_array('N', $up, true) && in_array('UBICAZIONE', $up, true)) {
+                            $hasN = (bool) array_filter($up, fn($v)=>preg_match('/^N\\b|^N\\./', $v));
+                            if ($hasN && in_array('UBICAZIONE', $up, true)) {
                                 $headersMap = [];
                                 foreach ($vals as $i => $v) $headersMap[$i] = self::normHeaderPorte($v);
                                 continue;

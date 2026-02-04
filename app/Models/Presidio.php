@@ -26,6 +26,11 @@ class Presidio extends Model
         'note', 'flag_preventivo', 'data_acquisto', 'scadenza_presidio',
     ];
 
+    protected $casts = [
+        'idrante_sopra_suolo' => 'boolean',
+        'idrante_sotto_suolo' => 'boolean',
+    ];
+
     // Cutoff per cambiare il periodo di revisione
     private const CUTOFF = '2024-08-01';
 
