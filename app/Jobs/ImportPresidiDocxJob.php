@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\Presidi\DocxPresidiImporter;
+use App\Models\ImportMassivoFile;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -15,13 +16,15 @@ class ImportPresidiDocxJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $importId;
     public string $relativePath;
     public int $clienteId;
     public ?int $sedeId;
     public string $azione;
 
-    public function __construct(string $relativePath, int $clienteId, ?int $sedeId = null, string $azione = 'skip_if_exists')
+    public function __construct(int $importId, string $relativePath, int $clienteId, ?int $sedeId = null, string $azione = 'skip_if_exists')
     {
+        $this->importId = $importId;
         $this->relativePath = $relativePath;
         $this->clienteId = $clienteId;
         $this->sedeId = $sedeId;
@@ -30,8 +33,14 @@ class ImportPresidiDocxJob implements ShouldQueue
 
     public function handle(): void
     {
+        ImportMassivoFile::whereKey($this->importId)->update(['status' => 'running', 'error' => null]);
+
         $fullPath = Storage::disk('local')->path($this->relativePath);
         if (!is_file($fullPath) || filesize($fullPath) === 0) {
+            ImportMassivoFile::whereKey($this->importId)->update([
+                'status' => 'failed',
+                'error' => 'File non trovato o vuoto',
+            ]);
             Log::error('[IMPORT MASSIVO] File non trovato o vuoto', [
                 'cliente_id' => $this->clienteId,
                 'sede_id' => $this->sedeId,
@@ -54,22 +63,39 @@ class ImportPresidiDocxJob implements ShouldQueue
                 ->when($this->sedeId !== null, fn($q) => $q->where('sede_id', $this->sedeId))
                 ->exists();
             if ($exists) {
+                ImportMassivoFile::whereKey($this->importId)->update([
+                    'status' => 'skipped',
+                    'error' => 'Presidi già presenti',
+                ]);
                 Log::info('[IMPORT MASSIVO] Saltato (presidi già presenti)', [
                     'cliente_id' => $this->clienteId,
                     'sede_id' => $this->sedeId,
-                    'path' => $this->path,
+                    'path' => $this->relativePath,
                 ]);
                 return;
             }
         }
 
-        $importer = new DocxPresidiImporter($this->clienteId, $this->sedeId);
-        $res = $importer->importFromPath($fullPath);
-        Log::info('[IMPORT MASSIVO] Completato', [
-            'cliente_id' => $this->clienteId,
-            'path' => $this->relativePath,
-            'importati' => $res['importati'] ?? 0,
-            'saltati' => $res['saltati'] ?? 0,
-        ]);
+        try {
+            $importer = new DocxPresidiImporter($this->clienteId, $this->sedeId);
+            $res = $importer->importFromPath($fullPath);
+            ImportMassivoFile::whereKey($this->importId)->update([
+                'status' => 'done',
+                'importati' => $res['importati'] ?? 0,
+                'saltati' => $res['saltati'] ?? 0,
+            ]);
+            Log::info('[IMPORT MASSIVO] Completato', [
+                'cliente_id' => $this->clienteId,
+                'path' => $this->relativePath,
+                'importati' => $res['importati'] ?? 0,
+                'saltati' => $res['saltati'] ?? 0,
+            ]);
+        } catch (\Throwable $e) {
+            ImportMassivoFile::whereKey($this->importId)->update([
+                'status' => 'failed',
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
     }
 }

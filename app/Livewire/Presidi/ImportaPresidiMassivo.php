@@ -6,6 +6,7 @@ use App\Jobs\ImportPresidiDocxJob;
 use App\Models\Cliente;
 use App\Models\Sede;
 use App\Models\Presidio;
+use App\Models\ImportMassivoFile;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
@@ -19,6 +20,8 @@ class ImportaPresidiMassivo extends Component
     public array $fileRows = [];
     public array $clientiInput = [];
     public array $fileErrors = [];
+    public ?string $batchId = null;
+    public array $jobs = [];
 
     public function updatedFiles(): void
     {
@@ -152,6 +155,7 @@ class ImportaPresidiMassivo extends Component
             return;
         }
 
+        $this->batchId = (string) Str::uuid();
         foreach ($this->fileRows as $row) {
             if ($row['status'] !== 'ok') continue;
             $file = $this->files[$row['index']] ?? null;
@@ -164,7 +168,17 @@ class ImportaPresidiMassivo extends Component
                 continue;
             }
             $sedeId = $row['sede_id'] === 'principal' ? null : (int)$row['sede_id'];
+            $import = ImportMassivoFile::create([
+                'batch_id' => $this->batchId,
+                'cliente_id' => (int) $row['cliente_id'],
+                'sede_id' => $sedeId,
+                'original_name' => $row['name'],
+                'stored_path' => $path,
+                'azione' => $row['azione'] ?? 'skip_if_exists',
+                'status' => 'queued',
+            ]);
             ImportPresidiDocxJob::dispatch(
+                $import->id,
                 $path,
                 (int)$row['cliente_id'],
                 $sedeId,
@@ -174,12 +188,22 @@ class ImportaPresidiMassivo extends Component
 
         $this->dispatch('toast', type: 'success', message: 'Import massivo avviato in coda.');
         $this->reset(['files','fileRows','clientiInput','fileErrors']);
+        $this->refreshJobStatuses();
     }
 
     public function render()
     {
         return view('livewire.presidi.importa-presidi-massivo')
             ->layout('layouts.app', ['title' => 'Import massivo presidi']);
+    }
+
+    public function refreshJobStatuses(): void
+    {
+        if (!$this->batchId) return;
+        $this->jobs = ImportMassivoFile::where('batch_id', $this->batchId)
+            ->orderBy('id')
+            ->get()
+            ->toArray();
     }
 
     private function extractCode4FromFilename(string $name): ?string

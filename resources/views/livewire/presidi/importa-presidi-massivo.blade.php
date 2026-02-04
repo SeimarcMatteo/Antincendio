@@ -187,4 +187,51 @@
             </div>
         </div>
     @endif
+
+    @if($jobs)
+        <div class="bg-white shadow rounded-lg p-4" wire:poll.5s="refreshJobStatuses">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-md font-semibold text-gray-700">Stato importazioni</h3>
+                <span class="text-xs text-gray-500">Aggiornamento automatico ogni 5s</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-2 py-1 text-left">File</th>
+                            <th class="px-2 py-1 text-left">Cliente</th>
+                            <th class="px-2 py-1 text-left">Sede</th>
+                            <th class="px-2 py-1 text-left">Stato</th>
+                            <th class="px-2 py-1 text-left">Importati</th>
+                            <th class="px-2 py-1 text-left">Saltati</th>
+                            <th class="px-2 py-1 text-left">Errore</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($jobs as $j)
+                            <tr class="border-b">
+                                <td class="px-2 py-1">{{ $j['original_name'] }}</td>
+                                <td class="px-2 py-1">{{ $j['cliente_id'] }}</td>
+                                <td class="px-2 py-1">{{ $j['sede_id'] ?? 'principal' }}</td>
+                                <td class="px-2 py-1">
+                                    @php $st = $j['status']; @endphp
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs
+                                        {{ $st === 'queued' ? 'bg-gray-100 text-gray-700' : '' }}
+                                        {{ $st === 'running' ? 'bg-blue-100 text-blue-700' : '' }}
+                                        {{ $st === 'done' ? 'bg-green-100 text-green-700' : '' }}
+                                        {{ $st === 'failed' ? 'bg-red-100 text-red-700' : '' }}
+                                        {{ $st === 'skipped' ? 'bg-amber-100 text-amber-700' : '' }}">
+                                        {{ strtoupper($st) }}
+                                    </span>
+                                </td>
+                                <td class="px-2 py-1">{{ $j['importati'] }}</td>
+                                <td class="px-2 py-1">{{ $j['saltati'] }}</td>
+                                <td class="px-2 py-1 text-xs text-red-600">{{ $j['error'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
 </div>
