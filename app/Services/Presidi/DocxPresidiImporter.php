@@ -7,6 +7,7 @@ use App\Models\Presidio;
 use App\Models\Sede;
 use App\Models\TipoEstintore;
 use App\Livewire\Presidi\ImportaPresidi;
+use App\Services\Presidi\ProgressivoParser;
 use Illuminate\Support\Carbon;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\Element\Table;
@@ -98,14 +99,15 @@ class DocxPresidiImporter
                         $r[$k] = $v;
                     }
 
-                    $numero = $r['numero'] ?? null;
-                    if (!is_numeric($numero)) continue;
+                    $numeroRaw = $r['numero'] ?? null;
+                    $prog = ProgressivoParser::parse($numeroRaw);
+                    if (!$prog) continue;
 
                     $ubic      = $r['ubicazione'] ?? '';
                     $contratto = $r['tipo_contratto'] ?? '';
 
                     if ($tableType === 'idranti') {
-                        if ($this->shouldSkipExisting('Idrante', (int)$numero)) {
+                        if ($this->shouldSkipExisting('Idrante', $prog['label'])) {
                             $saltati++;
                             continue;
                         }
@@ -127,7 +129,7 @@ class DocxPresidiImporter
                                 'cliente_id' => $this->clienteId,
                                 'sede_id'    => $sedeId,
                                 'categoria'  => 'Idrante',
-                                'progressivo'=> (int)$numero,
+                                'progressivo'=> $prog['label'],
                             ],
                             [
                                 'ubicazione'        => $ubic,
@@ -142,13 +144,13 @@ class DocxPresidiImporter
                                 'note'              => $note,
                             ]
                         );
-                        $this->markExisting('Idrante', (int)$numero);
+                        $this->markExisting('Idrante', $prog['label']);
                         $importati++;
                         continue;
                     }
 
                     if ($tableType === 'porte') {
-                        if ($this->shouldSkipExisting('Porta', (int)$numero)) {
+                        if ($this->shouldSkipExisting('Porta', $prog['label'])) {
                             $saltati++;
                             continue;
                         }
@@ -165,7 +167,7 @@ class DocxPresidiImporter
                                 'cliente_id' => $this->clienteId,
                                 'sede_id'    => $sedeId,
                                 'categoria'  => 'Porta',
-                                'progressivo'=> (int)$numero,
+                                'progressivo'=> $prog['label'],
                             ],
                             [
                                 'ubicazione'        => $ubic,
@@ -177,7 +179,7 @@ class DocxPresidiImporter
                                 'note'              => $note,
                             ]
                         );
-                        $this->markExisting('Porta', (int)$numero);
+                        $this->markExisting('Porta', $prog['label']);
                         $importati++;
                         continue;
                     }
@@ -225,7 +227,7 @@ class DocxPresidiImporter
 
                     $sedeId = $this->resolveSedeId();
 
-                    if ($this->shouldSkipExisting('Estintore', (int)$numero)) {
+                    if ($this->shouldSkipExisting('Estintore', $prog['label'])) {
                         $saltati++;
                         continue;
                     }
@@ -235,7 +237,7 @@ class DocxPresidiImporter
                             'cliente_id' => $this->clienteId,
                             'sede_id'    => $sedeId,
                             'categoria'  => 'Estintore',
-                            'progressivo'=> (int)$numero,
+                            'progressivo'=> $prog['label'],
                         ],
                         [
                             'ubicazione'           => $ubic,
@@ -258,7 +260,7 @@ class DocxPresidiImporter
                         ]
                     );
 
-                    $this->markExisting('Estintore', (int)$numero);
+                    $this->markExisting('Estintore', $prog['label']);
                     $importati++;
                 }
             }
@@ -280,18 +282,18 @@ class DocxPresidiImporter
 
         foreach ($rows as $r) {
             $cat = (string)$r->categoria;
-            $prog = (int)$r->progressivo;
+            $prog = (string)$r->progressivo;
             $this->existingKeys[$cat][$prog] = true;
         }
     }
 
-    private function shouldSkipExisting(string $categoria, int $progressivo): bool
+    private function shouldSkipExisting(string $categoria, string $progressivo): bool
     {
         if ($this->azione !== 'skip_duplicates') return false;
         return !empty($this->existingKeys[$categoria][$progressivo]);
     }
 
-    private function markExisting(string $categoria, int $progressivo): void
+    private function markExisting(string $categoria, string $progressivo): void
     {
         if ($this->azione !== 'skip_duplicates') return;
         $this->existingKeys[$categoria][$progressivo] = true;

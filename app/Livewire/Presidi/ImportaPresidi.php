@@ -11,6 +11,7 @@ use PhpOffice\PhpWord\Element\TextRun;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
 use App\Models\{TipoEstintore, ImportPresidio, Presidio};
+use App\Services\Presidi\ProgressivoParser;
 
 class ImportaPresidi extends Component
 {
@@ -532,9 +533,10 @@ public function ricalcola(string $scope, int $index): void
                         $r[$k] = $v;
                     }
 
-                    // must-have: numero
-                    $numero = $r['numero'] ?? null;
-                    if (!is_numeric($numero)) continue;
+                    // must-have: progressivo con parte numerica
+                    $numeroRaw = $r['numero'] ?? null;
+                    $prog = ProgressivoParser::parse($numeroRaw);
+                    if (!$prog) continue;
 
                     $ubic      = $r['ubicazione']      ?? '';
                     $contratto = $r['tipo_contratto']   ?? '';
@@ -554,7 +556,9 @@ public function ricalcola(string $scope, int $index): void
 
                         $this->anteprima[] = [
                             'categoria'         => 'Idrante',
-                            'progressivo'       => (int)$numero,
+                            'progressivo'       => $prog['label'],
+                            'progressivo_num'   => $prog['num'],
+                            'progressivo_suffix'=> $prog['suffix'],
                             'ubicazione'        => $ubic,
                             'tipo_contratto'    => $contratto,
                             'tipo_estintore'    => null,
@@ -586,7 +590,9 @@ public function ricalcola(string $scope, int $index): void
 
                         $this->anteprima[] = [
                             'categoria'         => 'Porta',
-                            'progressivo'       => (int)$numero,
+                            'progressivo'       => $prog['label'],
+                            'progressivo_num'   => $prog['num'],
+                            'progressivo_suffix'=> $prog['suffix'],
                             'ubicazione'        => $ubic,
                             'tipo_contratto'    => $contratto,
                             'tipo_estintore'    => null,
@@ -654,7 +660,9 @@ public function ricalcola(string $scope, int $index): void
 
                     $this->anteprima[] = [
                         'categoria'         => 'Estintore',
-                        'progressivo'       => (int)$numero,
+                        'progressivo'       => $prog['label'],
+                        'progressivo_num'   => $prog['num'],
+                        'progressivo_suffix'=> $prog['suffix'],
                         'ubicazione'        => $ubic,
                         'tipo_contratto'    => $contratto,
                         'tipo_estintore'    => $tipoRaw,

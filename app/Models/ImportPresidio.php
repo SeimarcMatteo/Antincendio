@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Services\Presidi\ProgressivoParser;
 
 class ImportPresidio extends Model
 {
@@ -10,7 +11,7 @@ class ImportPresidio extends Model
 
     protected $guarded = [];   // nessun campo in guarded → li accetta tutti
     protected $fillable = [
-        'cliente_id', 'sede_id', 'categoria', 'progressivo',
+        'cliente_id', 'sede_id', 'categoria', 'progressivo', 'progressivo_num', 'progressivo_suffix',
         'ubicazione', 'tipo_contratto', 'tipo_estintore', 'tipo_estintore_id',
         'idrante_tipo','idrante_lunghezza','idrante_sopra_suolo','idrante_sotto_suolo','porta_tipo',
         'flag_anomalia1', 'flag_anomalia2', 'flag_anomalia3',
@@ -29,6 +30,18 @@ class ImportPresidio extends Model
         'scadenza_presidio' => 'date:Y-m-d',
         'idrante_sopra_suolo' => 'boolean',
         'idrante_sotto_suolo' => 'boolean',
+        'progressivo_num' => 'integer',
     ];
+
+    protected static function booted()
+    {
+        static::saving(function (ImportPresidio $presidio) {
+            if ($parsed = ProgressivoParser::parse($presidio->progressivo)) {
+                $presidio->progressivo = $parsed['label'];
+                $presidio->progressivo_num = $parsed['num'];
+                $presidio->progressivo_suffix = $parsed['suffix'];
+            }
+        });
+    }
 
 }

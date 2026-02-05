@@ -238,6 +238,8 @@ public function ricalcolaDate(int $id): void
             ->where('cliente_id', $this->cliente->id)
             ->where('sede_id', $this->sedeId)
             ->where('categoria', $this->categoriaAttiva)
+            ->orderBy('progressivo_num')
+            ->orderBy('progressivo_suffix')
             ->orderBy('progressivo')
             ->get();
     }
@@ -400,7 +402,10 @@ public function ricalcolaDate(int $id): void
 {
     $presidi = Presidio::where('cliente_id', $this->clienteId)->where('attivo','1')->where('categoria',$this->categoriaAttiva)
         ->when($this->sedeId && $this->sedeId !== 'principale', fn($q) => $q->where('sede_id', $this->sedeId))
-        ->orderBy('categoria')->orderBy('progressivo')
+        ->orderBy('categoria')
+        ->orderBy('progressivo_num')
+        ->orderBy('progressivo_suffix')
+        ->orderBy('progressivo')
         ->get();
 
     // SOLO SE nel blade usi le variabili $clienti e $sedi

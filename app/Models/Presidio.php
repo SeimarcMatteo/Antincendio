@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\ClassificazioneEstintore;
+use App\Services\Presidi\ProgressivoParser;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +17,7 @@ class Presidio extends Model
     protected $table = 'presidi';
 
     protected $fillable = [
-        'cliente_id', 'sede_id', 'categoria', 'progressivo',
+        'cliente_id', 'sede_id', 'categoria', 'progressivo', 'progressivo_num', 'progressivo_suffix',
         'ubicazione', 'tipo_contratto', 'tipo_estintore_id',
         'idrante_tipo','idrante_lunghezza','idrante_sopra_suolo','idrante_sotto_suolo','porta_tipo',
         'data_serbatoio', 'marca_serbatoio', 'data_ultima_revisione',
@@ -29,6 +30,7 @@ class Presidio extends Model
     protected $casts = [
         'idrante_sopra_suolo' => 'boolean',
         'idrante_sotto_suolo' => 'boolean',
+        'progressivo_num' => 'integer',
     ];
 
     // Cutoff per cambiare il periodo di revisione
@@ -37,6 +39,11 @@ class Presidio extends Model
     protected static function booted()
     {
         static::saving(function (Presidio $presidio) {
+            if ($parsed = ProgressivoParser::parse($presidio->progressivo)) {
+                $presidio->progressivo = $parsed['label'];
+                $presidio->progressivo_num = $parsed['num'];
+                $presidio->progressivo_suffix = $parsed['suffix'];
+            }
             $presidio->loadMissing('tipoEstintore', 'cliente', 'sede');
             $presidio->calcolaScadenze();
         });
@@ -71,7 +78,7 @@ class Presidio extends Model
         $ultimoProgressivo = self::where('cliente_id', $clienteId)
             ->where('sede_id', $sedeId)
             ->where('categoria', $categoria)
-            ->max('progressivo');
+            ->max('progressivo_num');
 
         return $ultimoProgressivo ? $ultimoProgressivo + 1 : 1;
     }

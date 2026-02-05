@@ -107,9 +107,10 @@
 
                                 {{-- progressivo --}}
                                 <td class="px-2 py-1">
-                                    <input type="number" min="1"
+                                    <input type="text"
                                            wire:model.defer="anteprima.{{ $r }}.progressivo"
-                                           class="form-input w-full text-xs">
+                                           class="form-input w-full text-xs"
+                                           placeholder="Es. 13 BIS">
                                 </td>
 
                                 {{-- categoria --}}
@@ -399,9 +400,10 @@
 
 
                             <td class="px-2 py-1">
-                                <input type="number" min="1"
+                                <input type="text"
                                        wire:model.defer="presidiSalvati.{{ $i }}.progressivo"
-                                       class="form-input w-full text-xs">
+                                       class="form-input w-full text-xs"
+                                       placeholder="Es. 13 BIS">
                             </td>
 
                             <td class="px-2 py-1">
