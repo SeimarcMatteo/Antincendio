@@ -236,6 +236,11 @@
                                         {{ is_array($sede->mesi_visita ) ? implode(', ', $sede->mesi_visita ) : '—' }}
                                     </span>
                                 </div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    Tempi sede: base {{ $sede->minuti_intervento ?? '—' }} |
+                                    M1 {{ $sede->minuti_intervento_mese1 ?? '—' }} |
+                                    M2 {{ $sede->minuti_intervento_mese2 ?? '—' }}
+                                </div>
                                 @if ($sede->media_durata_effettiva)
                                     <div class="text-xs text-gray-500 italic">
                                         Media interventi: {{ round($sede->media_durata_effettiva) }} minuti
@@ -249,6 +254,7 @@
                                     <i class="fa fa-fire mr-1"></i>Gestione Presidi
                                 </button>
                                 <button wire:click="toggleMesiVisibili({{ $sede->id }})" class="btn btn-xs btn-warning">✏️ Mesi</button>
+                                <button wire:click="toggleMinutiVisibili({{ $sede->id }})" class="btn btn-xs btn-secondary">✏️ Tempi</button>
                             </div>
                         </div>
 
@@ -264,6 +270,34 @@
                                 @endfor
                             </div>
                             <button wire:click="salvaMesi({{ $sede->id }})" class="btn btn-xs btn-primary mt-2">💾 Salva mesi</button>
+                        @endif
+
+                        @if($minutiSediVisibile[$sede->id] ?? false)
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end mt-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Base</label>
+                                    <input type="number" min="0" max="1440"
+                                           wire:model.defer="minutiSedi.{{ $sede->id }}.minuti_intervento"
+                                           class="input input-bordered mt-1 max-w-[6rem]">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Mese visita 1</label>
+                                    <input type="number" min="0" max="1440"
+                                           wire:model.defer="minutiSedi.{{ $sede->id }}.minuti_intervento_mese1"
+                                           class="input input-bordered mt-1 max-w-[6rem]">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Mese visita 2</label>
+                                    <input type="number" min="0" max="1440"
+                                           wire:model.defer="minutiSedi.{{ $sede->id }}.minuti_intervento_mese2"
+                                           class="input input-bordered mt-1 max-w-[6rem]">
+                                </div>
+                                <div class="sm:col-span-3">
+                                    <button wire:click="salvaMinutiSede({{ $sede->id }})" class="btn btn-xs btn-primary mt-2">
+                                        💾 Salva tempi sede
+                                    </button>
+                                </div>
+                            </div>
                         @endif
                     </li>
                 @endforeach

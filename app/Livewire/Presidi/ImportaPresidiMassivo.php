@@ -97,6 +97,7 @@ class ImportaPresidiMassivo extends Component
                 $cliente = $map[$code4][0];
                 $row['cliente_id'] = $cliente->id;
                 $row['cliente_nome'] = $cliente->nome;
+                $row['principal_label'] = $this->formatClienteLabel($cliente);
                 $sedi = $sediByCliente->get($cliente->id, collect())
                     ->map(fn($s) => [
                         'id' => $s->id,
@@ -394,5 +395,26 @@ class ImportaPresidiMassivo extends Component
             return $nome.' — '.$dettagli;
         }
         return $nome !== '' ? $nome : 'Sede';
+    }
+
+    private function formatClienteLabel(Cliente $cliente): string
+    {
+        $nome = trim((string) $cliente->nome);
+        $indirizzo = trim((string) $cliente->indirizzo);
+        $cap = trim((string) $cliente->cap);
+        $citta = trim((string) $cliente->citta);
+        $provincia = trim((string) $cliente->provincia);
+
+        $localita = trim(($cap !== '' ? $cap.' ' : '').$citta);
+        if ($provincia !== '') {
+            $localita = trim($localita.' ('.$provincia.')');
+        }
+
+        $dettagli = trim($indirizzo.($indirizzo && $localita ? ', ' : '').$localita);
+        $label = $nome !== '' ? $nome : 'Cliente';
+        if ($dettagli !== '') {
+            return $label.' — '.$dettagli;
+        }
+        return $label;
     }
 }

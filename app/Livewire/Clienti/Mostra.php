@@ -16,6 +16,8 @@ class Mostra extends Component
     public ?int $minutiIntervento = null;
     public ?int $minutiInterventoMese1 = null;
     public ?int $minutiInterventoMese2 = null;
+    public array $minutiSedi = [];
+    public array $minutiSediVisibile = [];
 
     public $fatturazione_tipo;
     public $mese_fatturazione;
@@ -41,6 +43,11 @@ class Mostra extends Component
 
         foreach ($this->cliente->sedi as $sede) {
             $sede->media_durata_effettiva = $sede->interventi->avg('durata_effettiva');
+            $this->minutiSedi[$sede->id] = [
+                'minuti_intervento' => $sede->minuti_intervento,
+                'minuti_intervento_mese1' => $sede->minuti_intervento_mese1,
+                'minuti_intervento_mese2' => $sede->minuti_intervento_mese2,
+            ];
         }
 
         $this->fatturazione_tipo = $this->cliente->fatturazione_tipo;
@@ -138,6 +145,33 @@ class Mostra extends Component
         ]);
 
         $this->dispatch('toast', type: 'success', message: 'Minuti visita aggiornati.');
+    }
+
+    public function toggleMinutiVisibili(int $sedeId): void
+    {
+        $this->minutiSediVisibile[$sedeId] = !($this->minutiSediVisibile[$sedeId] ?? false);
+    }
+
+    public function salvaMinutiSede(int $sedeId): void
+    {
+        $this->validate([
+            "minutiSedi.$sedeId.minuti_intervento" => 'nullable|integer|min:0|max:1440',
+            "minutiSedi.$sedeId.minuti_intervento_mese1" => 'nullable|integer|min:0|max:1440',
+            "minutiSedi.$sedeId.minuti_intervento_mese2" => 'nullable|integer|min:0|max:1440',
+        ]);
+
+        $sede = Sede::find($sedeId);
+        if (!$sede || $sede->cliente_id !== $this->cliente->id) return;
+
+        $payload = $this->minutiSedi[$sedeId] ?? [];
+        $sede->update([
+            'minuti_intervento' => $payload['minuti_intervento'] ?? null,
+            'minuti_intervento_mese1' => $payload['minuti_intervento_mese1'] ?? null,
+            'minuti_intervento_mese2' => $payload['minuti_intervento_mese2'] ?? null,
+        ]);
+
+        $this->minutiSediVisibile[$sedeId] = false;
+        $this->dispatch('toast', type: 'success', message: 'Tempi sede aggiornati.');
     }
 
     public function vaiAiPresidi($sedeId = null)

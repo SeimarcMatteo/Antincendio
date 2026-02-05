@@ -74,7 +74,9 @@
                                         <select wire:model="fileRows.{{ $r['index'] }}.sede_id"
                                                 wire:change="sedeChanged({{ $r['index'] }})"
                                                 class="input input-bordered text-xs">
-                                            <option value="principal">Sede principale (nessuna sede)</option>
+                                            <option value="principal">
+                                                {{ $r['principal_label'] ?? 'Sede principale (nessuna sede)' }}
+                                            </option>
                                             @if(!empty($r['sedi']))
                                                 @foreach($r['sedi'] as $s)
                                                     <option value="{{ $s['id'] }}">{{ $s['label'] ?? $s['nome'] }}</option>
