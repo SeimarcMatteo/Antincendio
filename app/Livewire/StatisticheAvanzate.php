@@ -101,7 +101,7 @@ class StatisticheAvanzate extends Component
             ->join('users', 'users.id', '=', 'intervento_tecnico.user_id')
             ->whereBetween('interventi.data_intervento', [$da, $a])
             ->where('interventi.stato', 'Completato')
-            ->selectRaw('users.id as key, users.name as label, COUNT(*) as interventi, SUM(COALESCE(interventi.durata_effettiva,0)) as minuti')
+            ->selectRaw('users.id as key_id, users.name as label, COUNT(*) as interventi, SUM(COALESCE(interventi.durata_effettiva,0)) as minuti')
             ->groupBy('users.id', 'users.name')
             ->orderByDesc('interventi')
             ->limit(20)
@@ -111,7 +111,7 @@ class StatisticheAvanzate extends Component
             ->join('clienti', 'interventi.cliente_id', '=', 'clienti.id')
             ->where('interventi.stato', 'Completato')
             ->whereBetween('interventi.data_intervento', [$da, $a])
-            ->selectRaw('clienti.id as key, clienti.nome as label, COUNT(*) as totale')
+            ->selectRaw('clienti.id as key_id, clienti.nome as label, COUNT(*) as totale')
             ->groupBy('clienti.id', 'clienti.nome')
             ->orderByDesc('totale')
             ->limit(20)
@@ -122,7 +122,7 @@ class StatisticheAvanzate extends Component
             ->join('users', 'users.id', '=', 'intervento_tecnico.user_id')
             ->whereBetween('interventi.data_intervento', [$da, $a])
             ->where('interventi.stato', 'Completato')
-            ->selectRaw('users.id as key, users.name as label, ROUND(AVG(interventi.durata_effettiva), 0) as media')
+            ->selectRaw('users.id as key_id, users.name as label, ROUND(AVG(interventi.durata_effettiva), 0) as media')
             ->groupBy('users.id', 'users.name')
             ->orderByDesc('media')
             ->limit(20)
@@ -171,7 +171,7 @@ class StatisticheAvanzate extends Component
                 'type' => 'bar',
                 'axis' => 'y',
                 'labels' => $tecnici->pluck('label')->values(),
-                'keys' => $tecnici->pluck('key')->values(),
+                'keys' => $tecnici->pluck('key_id')->values(),
                 'datasets' => [
                     ['label' => 'Interventi', 'data' => $tecnici->pluck('interventi')->values(), 'backgroundColor' => '#EF4444'],
                     ['label' => 'Minuti', 'data' => $tecnici->pluck('minuti')->values(), 'backgroundColor' => '#3B82F6'],
@@ -185,7 +185,7 @@ class StatisticheAvanzate extends Component
                 'type' => 'bar',
                 'axis' => 'y',
                 'labels' => $clienti->pluck('label')->values(),
-                'keys' => $clienti->pluck('key')->values(),
+                'keys' => $clienti->pluck('key_id')->values(),
                 'datasets' => [
                     ['label' => 'Interventi', 'data' => $clienti->pluck('totale')->values(), 'backgroundColor' => '#F97316'],
                 ],
@@ -198,7 +198,7 @@ class StatisticheAvanzate extends Component
                 'type' => 'bar',
                 'axis' => 'y',
                 'labels' => $durataTecnici->pluck('label')->values(),
-                'keys' => $durataTecnici->pluck('key')->values(),
+                'keys' => $durataTecnici->pluck('key_id')->values(),
                 'datasets' => [
                     ['label' => 'Minuti medi', 'data' => $durataTecnici->pluck('media')->values(), 'backgroundColor' => '#8B5CF6'],
                 ],
