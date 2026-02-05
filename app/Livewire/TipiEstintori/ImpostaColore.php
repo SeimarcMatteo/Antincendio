@@ -8,13 +8,26 @@ use App\Models\Colore;
 
 class ImpostaColore extends Component
 {
-    public function salva($idTipo,$idColore)
+    public array $coloreSelezionato = [];
+
+    public function mount(): void
+    {
+        $this->coloreSelezionato = TipoEstintore::pluck('colore_id', 'id')->toArray();
+    }
+
+    public function updatedColoreSelezionato($value, $key): void
+    {
+        $this->salva((int) $key, $value);
+    }
+
+    public function salva(int $idTipo, $idColore = null): void
     {
         $tipo = TipoEstintore::findOrFail($idTipo);
         $tipo->colore_id = $idColore ?: null;
         $tipo->save();
-        
-        session()->flash('message', 'Colori aggiornati correttamente.');
+
+        $this->coloreSelezionato[$idTipo] = $tipo->colore_id;
+        $this->dispatch('toast', type: 'success', message: 'Colore salvato.');
     }
 
     public function render()
