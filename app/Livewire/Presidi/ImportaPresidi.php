@@ -93,6 +93,30 @@ private function detectCapacity(string $txt): ?int
     return null;
 }
 
+/** Estrae una descrizione tipo (es. "200 LT SCHIUMA") dai valori riga. */
+private static function extractTipoFromValues(array $vals): ?string
+{
+    foreach ($vals as $v) {
+        $v = trim((string)$v);
+        if ($v === '') continue;
+        if (preg_match('/\b\d{1,3}\s*(KG|KGS|KG\.|LT|L|LT\.|LITRI)\b/i', $v)) {
+            return $v;
+        }
+    }
+    return null;
+}
+
+/** Riconosce estintori carrellati (>=100 LT o keyword CARRELLATO) */
+public static function isCarrellatoText(?string $txt): bool
+{
+    $u = mb_strtoupper((string)$txt);
+    if (str_contains($u, 'CARRELL')) return true;
+    if (preg_match('/\b(\d{2,3})\s*(LT|L|LT\.|LITRI)\b/u', $u, $m)) {
+        return (int)$m[1] >= 100;
+    }
+    return false;
+}
+
 /**
  * Prova a riconoscere il TipoEstintore dal testo della cella del DOCX (es. “6 Kg Polv”).
  * Ritorna l’ID migliore o null se non decide.
@@ -232,17 +256,26 @@ private function ricalcolaDatePerRiga(array &$row): void
     $tipo = TipoEstintore::with('classificazione')->find($tipoId);
     $classi = $tipo?->classificazione;
 
-    $periodoRev    = self::pickPeriodoRevisione(
-        $dataSerb,
-        $classi,
-        $lastRev,
-        $row['marca_serbatoio'] ?? null
-    );
-    $baseRevisione = $lastRev ?: $dataSerb;
-    $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
-     
-    $scadCollaudo  = !empty($classi?->anni_collaudo) ? self::nextDueAfter($dataSerb, (int)$classi->anni_collaudo) : null;
-    $fineVita      = self::addYears($dataSerb, $classi?->anni_fine_vita);
+    $isCarrellato = self::isCarrellatoText(($row['tipo_estintore'] ?? '') . ' ' . ($tipo?->descrizione ?? ''));
+
+    if ($isCarrellato) {
+        $periodoRev    = 5;
+        $baseRevisione = $dataSerb;
+        $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
+        $scadCollaudo  = null;
+        $fineVita      = null;
+    } else {
+        $periodoRev    = self::pickPeriodoRevisione(
+            $dataSerb,
+            $classi,
+            $lastRev,
+            $row['marca_serbatoio'] ?? null
+        );
+        $baseRevisione = $lastRev ?: $dataSerb;
+        $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
+        $scadCollaudo  = !empty($classi?->anni_collaudo) ? self::nextDueAfter($dataSerb, (int)$classi->anni_collaudo) : null;
+        $fineVita      = self::addYears($dataSerb, $classi?->anni_fine_vita);
+    }
 
     $row['data_revisione'] = $this->visitaOnOrBefore($scadRevisione) ?? $scadRevisione;
 
@@ -532,7 +565,10 @@ public function ricalcola(string $scope, int $index): void
                     // mappa riga -> chiave
                     $r = [];
                     foreach ($vals as $i => $v) {
-                        $k = $headersMap[$i] ?? "col_$i";
+                        $k = $headersMap[$i] ?? null;
+                        if (!$k) {
+                            $k = "col_$i";
+                        }
                         $r[$k] = $v;
                     }
 
@@ -615,7 +651,11 @@ public function ricalcola(string $scope, int $index): void
                     }
 
                     $tipoRaw   = trim((($r['kglt'] ?? '') . ' ' . ($r['classe'] ?? '')));
+                    if ($tipoRaw === '') {
+                        $tipoRaw = self::extractTipoFromValues($vals) ?? '';
+                    }
                     $joinedUp  = mb_strtoupper(implode(' ', $vals));
+                    $isCarrellato = self::isCarrellatoText($tipoRaw . ' ' . $joinedUp);
                     
                     // prima prova col campo dedicato, poi — se vuoto — con tutta la riga
                     $tipoEstId = $this->guessTipoEstintoreId($tipoRaw !== '' ? $tipoRaw : $joinedUp);
@@ -633,15 +673,40 @@ public function ricalcola(string $scope, int $index): void
                         $dataUltimaRevisione = null;
                     }
                     $lastCollaudoRev     = self::parseDataCell($r['collaudo_revisione']   ?? null); // info (non usata)
+
+                    if ($isCarrellato) {
+                        $alt1 = self::parseDataCell($r['tipo_contratto'] ?? null);
+                        $alt2 = self::parseDataCell($r['col_5'] ?? null);
+                        $cands = array_filter([$dataSerb, $alt1, $alt2]);
+                        if (!$dataSerb && $cands) {
+                            sort($cands);
+                            $dataSerb = $cands[0];
+                        }
+                        // se il campo "tipo_contratto" è in realtà una data, non tenerlo come contratto
+                        if ($alt1) {
+                            $contratto = '';
+                        }
+                        if ($alt1 && $alt2) {
+                            $dataUltimaRevisione = null;
+                        }
+                    }
                     
                     // calcoli da serbatoio
-                    $periodoRev    = self::pickPeriodoRevisione($dataSerb, $classi, $dataUltimaRevisione, $marcaSerbatoio);
-                    $baseRevisione = $dataUltimaRevisione ?: $dataSerb;
-                    $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
-                    $scadCollaudo  = !empty($classi?->anni_collaudo)
-                                    ? self::nextDueAfter($dataSerb, (int)$classi->anni_collaudo)
-                                    : null;
-                    $fineVita      = self::addYears($dataSerb, $classi?->anni_fine_vita);
+                    if ($isCarrellato) {
+                        $periodoRev = 5;
+                        $baseRevisione = $dataSerb;
+                        $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
+                        $scadCollaudo = null;
+                        $fineVita = null;
+                    } else {
+                        $periodoRev    = self::pickPeriodoRevisione($dataSerb, $classi, $dataUltimaRevisione, $marcaSerbatoio);
+                        $baseRevisione = $dataUltimaRevisione ?: $dataSerb;
+                        $scadRevisione = self::nextDueAfter($baseRevisione, $periodoRev);
+                        $scadCollaudo  = !empty($classi?->anni_collaudo)
+                                        ? self::nextDueAfter($dataSerb, (int)$classi->anni_collaudo)
+                                        : null;
+                        $fineVita      = self::addYears($dataSerb, $classi?->anni_fine_vita);
+                    }
 
                     // allineamento ai mesi preferiti (revisione/collaudo)
                     $revAligned = $this->visitaOnOrBefore($scadRevisione);   // <= inclusiva
@@ -660,6 +725,11 @@ public function ricalcola(string $scope, int $index): void
                     $flag1 = str_contains($joinedUp, 'CARTELLO');
                     $flag2 = str_contains($joinedUp, 'TERRA');
                     $flag3 = str_contains($joinedUp, 'NUMERAZ');
+
+                    $noteExtra = null;
+                    if (!empty($r['collaudo_revisione'] ?? null) && !self::parseDataCell($r['collaudo_revisione'])) {
+                        $noteExtra = trim((string)$r['collaudo_revisione']);
+                    }
 
                     $this->anteprima[] = [
                         'categoria'         => 'Estintore',
@@ -692,7 +762,7 @@ public function ricalcola(string $scope, int $index): void
                         'flag_anomalia1'    => $flag1,
                         'flag_anomalia2'    => $flag2,
                         'flag_anomalia3'    => $flag3,
-                        'note'              => null,
+                        'note'              => $noteExtra,
                     ];
                 }
             }
@@ -710,7 +780,7 @@ public function ricalcola(string $scope, int $index): void
                 $this->addError("anteprima.$i.data_serbatoio", 'Obbligatorio');
             }
 
-            if (!$row['tipo_estintore_id']) {
+            if (!$row['tipo_estintore_id'] && !self::isCarrellatoText($row['tipo_estintore'] ?? '')) {
                 $this->addError("anteprima.$i.tipo_estintore_id", 'Seleziona il tipo');
             }
         }
@@ -742,24 +812,20 @@ public function ricalcola(string $scope, int $index): void
         e li spostiamo nella tabella definitiva              */
         $query = ImportPresidio::where('cliente_id', $this->clienteId)
                 ->when($this->sedeId, fn ($q) => $q->where('sede_id', $this->sedeId));
-                if (!$tutti) {      // import selezionati
-                    $mancanti = ImportPresidio::whereIn('id', $this->selezionati)
-                                 ->where('categoria', 'Estintore')
-                                 ->whereNull('tipo_estintore_id')->count();
-                } else {            // importa tutti
-                    $mancanti = ImportPresidio::where('cliente_id', $this->clienteId)
-                                 ->when($this->sedeId, fn($q)=>$q->where('sede_id',$this->sedeId))
-                                 ->where('categoria', 'Estintore')
-                                 ->whereNull('tipo_estintore_id')->count();
-                }
-                
-                if ($mancanti) {
-                    $this->dispatch('toast', type: 'error', message: 'Completa il Tipo Estintore prima di importare');
-                    return;
-                }
         $import = $tutti
             ? $query->get()
             : $query->whereIn('id', $this->selezionati)->get();
+
+        $mancanti = $import->filter(function ($p) {
+            return ($p->categoria === 'Estintore')
+                && !$p->tipo_estintore_id
+                && !self::isCarrellatoText($p->tipo_estintore ?? '');
+        })->count();
+
+        if ($mancanti) {
+            $this->dispatch('toast', type: 'error', message: 'Completa il Tipo Estintore prima di importare');
+            return;
+        }
 
         foreach ($import as $p) {
             Presidio::updateOrCreate(

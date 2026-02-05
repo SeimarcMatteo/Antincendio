@@ -165,6 +165,7 @@ public function ricalcolaDate(int $id): void
     // lavora sulla mappa modifiche (presidiData) se presente, altrimenti su valori correnti del model
     $row = $this->presidiData[$id] ?? [
         'tipo_estintore_id'     => $this->presidi->firstWhere('id', $id)?->tipo_estintore_id,
+        'tipo_estintore'        => $this->presidi->firstWhere('id', $id)?->tipo_estintore,
         'data_serbatoio'        => $this->presidi->firstWhere('id', $id)?->data_serbatoio,
         'data_acquisto'         => $this->presidi->firstWhere('id', $id)?->data_acquisto,
         'scadenza_presidio'     => $this->presidi->firstWhere('id', $id)?->scadenza_presidio,
@@ -197,12 +198,23 @@ public function ricalcolaDate(int $id): void
     $tipo   = \App\Models\TipoEstintore::with('classificazione')->find($tipoId);
     $classi = $tipo?->classificazione;
 
-    $periodoRev    = \App\Livewire\Presidi\ImportaPresidi::pickPeriodoRevisione($serb, $classi, $last, $row['marca_serbatoio'] ?? null);
-    $baseRevisione = $last ?: $serb;
-    $scadRevisione = \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($baseRevisione, $periodoRev);$scadCollaudo  = !empty($classi?->anni_collaudo)
-        ? \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($serb, (int)$classi->anni_collaudo)
-        : null;
-    $fineVita      = \App\Livewire\Presidi\ImportaPresidi::addYears($serb, $classi?->anni_fine_vita);
+    $isCarrellato = \App\Livewire\Presidi\ImportaPresidi::isCarrellatoText($row['tipo_estintore'] ?? '');
+
+    if ($isCarrellato) {
+        $periodoRev    = 5;
+        $baseRevisione = $serb;
+        $scadRevisione = \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($baseRevisione, $periodoRev);
+        $scadCollaudo  = null;
+        $fineVita      = null;
+    } else {
+        $periodoRev    = \App\Livewire\Presidi\ImportaPresidi::pickPeriodoRevisione($serb, $classi, $last, $row['marca_serbatoio'] ?? null);
+        $baseRevisione = $last ?: $serb;
+        $scadRevisione = \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($baseRevisione, $periodoRev);
+        $scadCollaudo  = !empty($classi?->anni_collaudo)
+            ? \App\Livewire\Presidi\ImportaPresidi::nextDueAfter($serb, (int)$classi->anni_collaudo)
+            : null;
+        $fineVita      = \App\Livewire\Presidi\ImportaPresidi::addYears($serb, $classi?->anni_fine_vita);
+    }
 
     // se hai i "mesi preferiti", allinea come già fatto nell’import (riusa lo stesso helper se l’hai messo qui)
     if (method_exists($this, 'alignToPreferred')) {
