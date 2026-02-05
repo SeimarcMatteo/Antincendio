@@ -14,7 +14,7 @@
                             <span class="inline-block w-3 h-3 bg-green-500 rounded-full mr-1"></span>
                             <strong>{{ $int->cliente->nome }}</strong>
                             {{ optional($int->sede)->nome }}
-                            ({{ round($int->durata_minuti/60,1) }} ore)
+                            ({{ $this->formatMinutes($int->durata_minuti) }})
                         </div>
                     @endforeach
                 @else
@@ -22,7 +22,7 @@
                 @endif
 
                 <div class="mt-3 pt-2 border-t text-sm font-bold">
-                    Totale: {{ round($tec->totale_minuti/60,1) }} / 8 ore
+                    Totale: {{ $this->formatMinutes($tec->totale_minuti) }} / 8 ore
                 </div>
             </div>
         @endforeach

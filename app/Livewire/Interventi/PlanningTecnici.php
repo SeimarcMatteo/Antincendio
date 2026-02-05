@@ -3,6 +3,7 @@
 namespace App\Livewire\Interventi;
 
 use Livewire\Component;
+use App\Models\User;
 
 class PlanningTecnici extends Component
 {
@@ -26,5 +27,20 @@ class PlanningTecnici extends Component
             });
 
         return view('livewire.interventi.planning-tecnici', compact('tecnici'));
+    }
+
+    public function formatMinutes($minutes): string
+    {
+        $minutes = max(0, (int) $minutes);
+        $hours = intdiv($minutes, 60);
+        $mins = $minutes % 60;
+
+        if ($hours <= 0) {
+            return $mins . ' min';
+        }
+        if ($mins === 0) {
+            return $hours . ' h';
+        }
+        return $hours . ' h ' . $mins . ' min';
     }
 }

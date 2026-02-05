@@ -208,6 +208,7 @@ class FormPianificazioneIntervento extends Component
         $this->reset(['clienteId', 'sedeId', 'dataIntervento', 'tecnici']);
         $this->dispatch('intervento-pianificato');
         $this->dispatch('toast', type: 'success', message: 'Intervento pianificato con successo!');
+        $this->applicaFiltri();
     }
 
     public function presidiEvasi($presidi)

@@ -11,6 +11,7 @@ class PlanningSettimanale extends Component
 {
     public $inizioSettimana;
     public $giorn;
+    protected $listeners = ['intervento-pianificato' => '$refresh'];
     public function mount()
     {
         $this->inizioSettimana = now()->startOfWeek(Carbon::MONDAY)->format('Y-m-d');
@@ -105,5 +106,20 @@ $gior = $this->giorn;
             'tecnici' => $tecnici,
         ])->layout('layouts.app'); // ✅ se usi il classico layout Laravel Breeze
     ;
+    }
+
+    public function formatMinutes($minutes): string
+    {
+        $minutes = max(0, (int) $minutes);
+        $hours = intdiv($minutes, 60);
+        $mins = $minutes % 60;
+
+        if ($hours <= 0) {
+            return $mins . ' min';
+        }
+        if ($mins === 0) {
+            return $hours . ' h';
+        }
+        return $hours . ' h ' . $mins . ' min';
     }
 }

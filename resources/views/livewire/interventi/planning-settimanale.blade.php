@@ -32,7 +32,7 @@
                     <tr class="border-t">
                         <td class="py-2 px-3 text-left font-medium bg-gray-50 sticky left-0 z-0">
                             <div class="font-semibold">{{ $tec->name }}</div>
-                            <div class="text-xs text-gray-500">{{ round($totSett/60, 1) }}h sett.</div>
+                            <div class="text-xs text-gray-500">{{ $this->formatMinutes($totSett) }} sett.</div>
                         </td>
                         @foreach($giorni as $giorno)
                             @php
@@ -55,7 +55,7 @@
                                                 @if($int->sede)
                                                     <div class="text-xs text-gray-500">{{ $int->sede->nome }}</div>
                                                 @endif
-                                                <div class="text-xs text-gray-600 mt-1">⏱ {{ round($int->durata_minuti / 60, 1) }}h</div>
+                                                <div class="text-xs text-gray-600 mt-1">⏱ {{ $this->formatMinutes($int->durata_minuti) }}</div>
                                             </div>
                                             <button wire:click="annullaIntervento({{ $int->id }})"
                                                 class="text-red-600 hover:text-red-800 text-sm font-bold px-1"
@@ -64,7 +64,7 @@
                                     </div>
                                 @endforeach
                                 <div class="mt-2 font-semibold text-xs text-gray-700">
-                                    Totale: {{ round($minuti/60, 1) }}h
+                                    Totale: {{ $this->formatMinutes($minuti) }}
                                 </div>
                             </td>
                         @endforeach

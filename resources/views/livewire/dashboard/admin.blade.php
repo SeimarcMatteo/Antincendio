@@ -76,23 +76,28 @@
             </div>
         @endif
 
-    {{-- Clienti senza mesi impostati --}}
-    @if($this->clientiSenzaMesi->isNotEmpty())
+    {{-- Clienti/Sedi senza mesi impostati --}}
+    @if($this->targetsSenzaMesi->isNotEmpty())
         <div class="bg-yellow-100 p-4 rounded shadow border mt-8">
-            <h2 class="font-bold text-lg mb-2">⚠️ Clienti con presidi ma senza mesi impostati</h2>
+            <h2 class="font-bold text-lg mb-2">⚠️ Mesi visita mancanti (solo dove ci sono presidi)</h2>
 
-            @foreach($this->clientiSenzaMesi as $cliente)
+            @foreach($this->targetsSenzaMesi as $target)
                 <div class="mb-4 border-b pb-2">
-                    <h3 class="font-semibold">{{ $cliente->nome }}</h3>
+                    <h3 class="font-semibold">{{ $target['cliente_nome'] }}</h3>
+                    <div class="text-xs text-gray-600 mb-1">
+                        📍 {{ $target['sede_nome'] }} @if(!empty($target['indirizzo'])) – {{ $target['indirizzo'] }} @endif
+                    </div>
                     <div class="grid grid-cols-6 gap-2 mt-1">
                         @for($i = 1; $i <= 12; $i++)
                             <label class="inline-flex items-center">
-                                <input type="checkbox" wire:model.defer="modificaMesi.{{ $cliente->id }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" class="mr-1">
+                                <input type="checkbox"
+                                       wire:model.defer="modificaMesi.{{ $target['key'] }}.{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}"
+                                       class="mr-1">
                                 {{ Date::create()->month($i)->format('M') }}
                             </label>
                         @endfor
                     </div>
-                    <button wire:click="salvaMesi({{ $cliente->id }})" class="btn btn-xs btn-primary mt-2">
+                    <button wire:click="salvaMesi('{{ $target['tipo'] }}', {{ $target['id'] }})" class="btn btn-xs btn-primary mt-2">
                         💾 Salva mesi
                     </button>
                 </div>
