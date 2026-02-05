@@ -20,7 +20,10 @@ class Sede extends Model
         'provincia',
         'codice_esterno',
         'minuti_intervento',
+        'minuti_intervento_mese1',
+        'minuti_intervento_mese2',
         'mesi_visita',
+        'zona',
     ];
     protected $casts = [
         'mesi_visita' => 'array',

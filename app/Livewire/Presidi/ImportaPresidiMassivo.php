@@ -18,10 +18,16 @@ class ImportaPresidiMassivo extends Component
 
     public array $files = [];
     public array $fileRows = [];
-    public array $clientiInput = [];
+    public array $targetInputs = [];
     public array $fileErrors = [];
     public ?string $batchId = null;
     public array $jobs = [];
+    public array $zoneSuggestions = [];
+
+    public function mount(): void
+    {
+        $this->refreshZoneSuggestions();
+    }
 
     public function updatedFiles(): void
     {
@@ -32,21 +38,31 @@ class ImportaPresidiMassivo extends Component
     {
         $this->fileErrors = [];
         $this->fileRows = [];
+        $this->targetInputs = [];
 
         if (empty($this->files)) return;
 
-        $clienti = Cliente::all(['id','nome','codice_esterno','mesi_visita','minuti_intervento','minuti_intervento_mese1','minuti_intervento_mese2','zona']);
+        $clienti = Cliente::all([
+            'id','nome','codice_esterno','mesi_visita',
+            'minuti_intervento','minuti_intervento_mese1','minuti_intervento_mese2','zona'
+        ]);
         $map = [];
+        $clientiById = [];
         foreach ($clienti as $c) {
+            $clientiById[$c->id] = $c;
             $code = (string)($c->codice_esterno ?? '');
             $last4 = strlen($code) >= 4 ? substr($code, -4) : null;
             if (!$last4) continue;
             $map[$last4][] = $c;
         }
         $sediByCliente = Sede::query()
-            ->select('id','cliente_id','nome','indirizzo','citta','cap','provincia')
+            ->select('id','cliente_id','nome','indirizzo','citta','cap','provincia','mesi_visita','minuti_intervento','minuti_intervento_mese1','minuti_intervento_mese2','zona')
             ->get()
             ->groupBy('cliente_id');
+        $sediById = Sede::query()
+            ->select('id','cliente_id','nome','indirizzo','citta','cap','provincia','mesi_visita','minuti_intervento','minuti_intervento_mese1','minuti_intervento_mese2','zona')
+            ->get()
+            ->keyBy('id');
 
         foreach ($this->files as $i => $file) {
             $name = $file->getClientOriginalName();
@@ -84,15 +100,8 @@ class ImportaPresidiMassivo extends Component
                 $row['sedi'] = $sedi;
                 $row['sede_id'] = count($sedi) ? $sedi[0]['id'] : 'principal';
                 $row['azione'] = 'skip_duplicates';
-
-                $this->clientiInput[$cliente->id] = $this->clientiInput[$cliente->id] ?? [
-                    'nome' => $cliente->nome,
-                    'mesi_visita' => $this->normalizeMesiForCheckboxes($cliente->mesi_visita ?? []),
-                    'minuti_intervento' => $cliente->minuti_intervento,
-                    'minuti_intervento_mese1' => $cliente->minuti_intervento_mese1,
-                    'minuti_intervento_mese2' => $cliente->minuti_intervento_mese2,
-                    'zona' => $cliente->zona,
-                ];
+                $row['target_key'] = $this->targetKeyFor($row['cliente_id'], $row['sede_id']);
+                $this->ensureTargetInput($row['target_key'], $cliente, $sediById->get($row['sede_id']));
             }
 
             $this->fileRows[] = $row;
@@ -104,19 +113,22 @@ class ImportaPresidiMassivo extends Component
             $clienteId = $row['cliente_id'] ?? null;
             if (!$clienteId) continue;
             $sedeId = $row['sede_id'] ?? null;
-            $count = Presidio::where('cliente_id', $clienteId)
-                ->when($sedeId === 'principal', fn($q) => $q->whereNull('sede_id'))
-                ->when($sedeId !== 'principal', fn($q) => $q->where('sede_id', $sedeId))
-                ->count();
+            $count = $this->countPresidi($clienteId, $sedeId);
             $this->fileRows[$idx]['presidi_esistenti'] = $count;
+            $this->fileRows[$idx]['target_key'] = $this->targetKeyFor($clienteId, $sedeId);
+            $this->ensureTargetInput(
+                $this->fileRows[$idx]['target_key'],
+                $clientiById[$clienteId] ?? null,
+                $sedeId && $sedeId !== 'principal' ? $sediById->get((int)$sedeId) : null
+            );
         }
     }
 
-    public function saveClientiMissing(): void
+    public function saveTargetInputs(): void
     {
-        foreach ($this->clientiInput as $id => $data) {
-            $cliente = Cliente::find($id);
-            if (!$cliente) continue;
+        foreach ($this->targetInputs as $key => $data) {
+            $type = $data['target_type'] ?? null;
+            if (!$type) continue;
             $mesi = collect($data['mesi_visita'] ?? [])
                 ->filter(fn($v) => $v)
                 ->keys()
@@ -124,26 +136,37 @@ class ImportaPresidiMassivo extends Component
                 ->sort()
                 ->values()
                 ->all();
-            $cliente->update([
+            $payload = [
                 'mesi_visita' => $mesi,
                 'minuti_intervento' => $data['minuti_intervento'] ?? null,
                 'minuti_intervento_mese1' => $data['minuti_intervento_mese1'] ?? null,
                 'minuti_intervento_mese2' => $data['minuti_intervento_mese2'] ?? null,
                 'zona' => $data['zona'] ?? null,
-            ]);
+            ];
+            if ($type === 'cliente') {
+                $cliente = Cliente::find($data['cliente_id'] ?? null);
+                if ($cliente) $cliente->update($payload);
+            } elseif ($type === 'sede') {
+                $sede = Sede::find($data['sede_id'] ?? null);
+                if ($sede) $sede->update($payload);
+            }
         }
-        $this->dispatch('toast', type: 'success', message: 'Dati clienti aggiornati.');
+        $this->dispatch('toast', type: 'success', message: 'Dati aggiornati.');
+        $this->refreshZoneSuggestions();
         $this->prepareFiles();
     }
 
     public function canImport(): bool
     {
+        $usedKeys = [];
         foreach ($this->fileRows as $row) {
             if ($row['status'] !== 'ok') return false;
             if (empty($row['sede_id'])) return false;
             if (($row['presidi_esistenti'] ?? 0) > 0 && empty($row['azione'])) return false;
+            if (!empty($row['target_key'])) $usedKeys[$row['target_key']] = true;
         }
-        foreach ($this->clientiInput as $data) {
+        foreach (array_keys($usedKeys) as $key) {
+            $data = $this->targetInputs[$key] ?? [];
             $mesi = $data['mesi_visita'] ?? [];
             if (empty($mesi)) return false;
             if (empty($data['minuti_intervento_mese1']) || empty($data['minuti_intervento_mese2'])) return false;
@@ -191,8 +214,24 @@ class ImportaPresidiMassivo extends Component
         }
 
         $this->dispatch('toast', type: 'success', message: 'Import massivo avviato in coda.');
-        $this->reset(['files','fileRows','clientiInput','fileErrors']);
+        $this->reset(['files','fileRows','targetInputs','fileErrors']);
         $this->refreshJobStatuses();
+    }
+
+    public function sedeChanged(int $index): void
+    {
+        $row = $this->fileRows[$index] ?? null;
+        if (!$row || ($row['status'] ?? '') !== 'ok') return;
+
+        $clienteId = $row['cliente_id'] ?? null;
+        $sedeId = $row['sede_id'] ?? null;
+        if (!$clienteId) return;
+
+        $this->fileRows[$index]['target_key'] = $this->targetKeyFor($clienteId, $sedeId);
+        $cliente = Cliente::find($clienteId);
+        $sede = ($sedeId && $sedeId !== 'principal') ? Sede::find((int)$sedeId) : null;
+        $this->ensureTargetInput($this->fileRows[$index]['target_key'], $cliente, $sede);
+        $this->fileRows[$index]['presidi_esistenti'] = $this->countPresidi($clienteId, $sedeId);
     }
 
     public function render()
@@ -249,6 +288,78 @@ class ImportaPresidiMassivo extends Component
             }
         }
         return $out;
+    }
+
+    private function targetKeyFor(?int $clienteId, $sedeId): ?string
+    {
+        if (!$clienteId) return null;
+        if ($sedeId === 'principal' || $sedeId === null) return 'c:'.$clienteId;
+        return 's:'.$sedeId;
+    }
+
+    private function ensureTargetInput(?string $key, ?Cliente $cliente, ?Sede $sede): void
+    {
+        if (!$key || isset($this->targetInputs[$key])) return;
+
+        if (str_starts_with($key, 'c:') && $cliente) {
+            $this->targetInputs[$key] = [
+                'label' => $cliente->nome.' — Sede principale',
+                'target_type' => 'cliente',
+                'cliente_id' => $cliente->id,
+                'sede_id' => null,
+                'mesi_visita' => $this->normalizeMesiForCheckboxes($cliente->mesi_visita ?? []),
+                'minuti_intervento' => $cliente->minuti_intervento,
+                'minuti_intervento_mese1' => $cliente->minuti_intervento_mese1,
+                'minuti_intervento_mese2' => $cliente->minuti_intervento_mese2,
+                'zona' => $cliente->zona,
+            ];
+            return;
+        }
+
+        if (str_starts_with($key, 's:') && $sede) {
+            $this->targetInputs[$key] = [
+                'label' => ($cliente?->nome ? $cliente->nome.' — ' : '').($this->formatSedeLabel($sede)),
+                'target_type' => 'sede',
+                'cliente_id' => $sede->cliente_id,
+                'sede_id' => $sede->id,
+                'mesi_visita' => $this->normalizeMesiForCheckboxes($sede->mesi_visita ?? ($cliente?->mesi_visita ?? [])),
+                'minuti_intervento' => $sede->minuti_intervento ?? ($cliente?->minuti_intervento ?? null),
+                'minuti_intervento_mese1' => $sede->minuti_intervento_mese1 ?? ($cliente?->minuti_intervento_mese1 ?? null),
+                'minuti_intervento_mese2' => $sede->minuti_intervento_mese2 ?? ($cliente?->minuti_intervento_mese2 ?? null),
+                'zona' => $sede->zona ?? ($cliente?->zona ?? null),
+            ];
+            return;
+        }
+    }
+
+    private function countPresidi(int $clienteId, $sedeId): int
+    {
+        return Presidio::where('cliente_id', $clienteId)
+            ->when($sedeId === 'principal', fn($q) => $q->whereNull('sede_id'))
+            ->when($sedeId !== 'principal', fn($q) => $q->where('sede_id', $sedeId))
+            ->count();
+    }
+
+    private function refreshZoneSuggestions(): void
+    {
+        $clienteZones = Cliente::query()
+            ->whereNotNull('zona')
+            ->where('zona', '!=', '')
+            ->pluck('zona');
+
+        $sedeZones = Sede::query()
+            ->whereNotNull('zona')
+            ->where('zona', '!=', '')
+            ->pluck('zona');
+
+        $this->zoneSuggestions = $clienteZones
+            ->merge($sedeZones)
+            ->map(fn($z) => trim(preg_replace('/\s+/', ' ', (string)$z)))
+            ->filter()
+            ->unique(fn($z) => mb_strtolower($z))
+            ->sort()
+            ->values()
+            ->toArray();
     }
 
     private function formatSedeLabel(Sede $sede): string

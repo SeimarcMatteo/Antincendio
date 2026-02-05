@@ -59,8 +59,8 @@
                                 <td class="px-2 py-1">{{ $r['cliente_nome'] ?? '—' }}</td>
                                 <td class="px-2 py-1 text-xs">
                                     @php
-                                        $cid = $r['cliente_id'] ?? null;
-                                        $cdata = $cid ? ($clientiInput[$cid] ?? null) : null;
+                                        $tkey = $r['target_key'] ?? null;
+                                        $cdata = $tkey ? ($targetInputs[$tkey] ?? null) : null;
                                         $mesiOk = !empty($cdata['mesi_visita'] ?? []);
                                         $tempiOk = !empty($cdata['minuti_intervento_mese1'] ?? null) && !empty($cdata['minuti_intervento_mese2'] ?? null);
                                         $zonaOk = !empty($cdata['zona'] ?? null);
@@ -71,7 +71,8 @@
                                 </td>
                                 <td class="px-2 py-1">
                                     @if(($r['status'] ?? '') === 'ok')
-                                        <select wire:model.defer="fileRows.{{ $r['index'] }}.sede_id"
+                                        <select wire:model="fileRows.{{ $r['index'] }}.sede_id"
+                                                wire:change="sedeChanged({{ $r['index'] }})"
                                                 class="input input-bordered text-xs">
                                             <option value="principal">Sede principale (nessuna sede)</option>
                                             @if(!empty($r['sedi']))
@@ -118,17 +119,24 @@
         </div>
     @endif
 
-    @if($clientiInput)
+    @if($targetInputs)
         <div class="bg-white shadow rounded-lg p-4 space-y-4">
-            <h3 class="text-md font-semibold text-gray-700">Dati mancanti clienti</h3>
-            @foreach($clientiInput as $id => $c)
+            <h3 class="text-md font-semibold text-gray-700">Dati clienti e sedi</h3>
+            <datalist id="zone-list">
+                @foreach($zoneSuggestions as $z)
+                    <option value="{{ $z }}"></option>
+                @endforeach
+            </datalist>
+            @foreach($targetInputs as $key => $c)
                 @php
                     $mesi = $c['mesi_visita'] ?? [];
                 @endphp
                 <div class="border rounded p-4">
                     <div class="flex items-center justify-between mb-2">
-                        <div class="font-semibold text-gray-800">{{ $c['nome'] }}</div>
-                        <div class="text-xs text-gray-500">ID: {{ $id }}</div>
+                        <div class="font-semibold text-gray-800">{{ $c['label'] ?? 'Cliente/Sede' }}</div>
+                        <div class="text-xs text-gray-500">
+                            Cliente: {{ $c['cliente_id'] ?? '—' }} @if(!empty($c['sede_id'])) | Sede: {{ $c['sede_id'] }} @endif
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -138,7 +146,7 @@
                                 @for($m = 1; $m <= 12; $m++)
                                     <label class="inline-flex items-center">
                                         <input type="checkbox"
-                                               wire:model.defer="clientiInput.{{ $id }}.mesi_visita.{{ $m }}"
+                                               wire:model.defer="targetInputs.{{ $key }}.mesi_visita.{{ $m }}"
                                                class="mr-1">
                                         {{ Date::create()->month($m)->format('M') }}
                                     </label>
@@ -150,26 +158,27 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Zona</label>
                                 <input type="text"
-                                       wire:model.defer="clientiInput.{{ $id }}.zona"
+                                       list="zone-list"
+                                       wire:model.defer="targetInputs.{{ $key }}.zona"
                                        class="input input-bordered w-full mt-1">
                             </div>
                             <div class="grid grid-cols-3 gap-2">
                                 <div>
                                     <label class="block text-xs text-gray-600">Base</label>
                                     <input type="number" min="0" max="1440"
-                                           wire:model.defer="clientiInput.{{ $id }}.minuti_intervento"
+                                           wire:model.defer="targetInputs.{{ $key }}.minuti_intervento"
                                            class="input input-bordered w-full">
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-600">Mese 1</label>
                                     <input type="number" min="0" max="1440"
-                                           wire:model.defer="clientiInput.{{ $id }}.minuti_intervento_mese1"
+                                           wire:model.defer="targetInputs.{{ $key }}.minuti_intervento_mese1"
                                            class="input input-bordered w-full">
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-600">Mese 2</label>
                                     <input type="number" min="0" max="1440"
-                                           wire:model.defer="clientiInput.{{ $id }}.minuti_intervento_mese2"
+                                           wire:model.defer="targetInputs.{{ $key }}.minuti_intervento_mese2"
                                            class="input input-bordered w-full">
                                 </div>
                             </div>
@@ -179,7 +188,7 @@
             @endforeach
 
             <div class="flex items-center gap-3">
-                <button wire:click="saveClientiMissing" class="btn btn-primary btn-sm">💾 Salva dati clienti</button>
+                <button wire:click="saveTargetInputs" class="btn btn-primary btn-sm">💾 Salva dati</button>
                 <button wire:click="confermaImportMassivo"
                         class="btn btn-success btn-sm"
                         @if(!$this->canImport()) disabled @endif>
