@@ -322,11 +322,11 @@ class ImportaPresidiMassivo extends Component
                 'target_type' => 'sede',
                 'cliente_id' => $sede->cliente_id,
                 'sede_id' => $sede->id,
-                'mesi_visita' => $this->normalizeMesiForCheckboxes($sede->mesi_visita ?? ($cliente?->mesi_visita ?? [])),
-                'minuti_intervento' => $sede->minuti_intervento ?? ($cliente?->minuti_intervento ?? null),
-                'minuti_intervento_mese1' => $sede->minuti_intervento_mese1 ?? ($cliente?->minuti_intervento_mese1 ?? null),
-                'minuti_intervento_mese2' => $sede->minuti_intervento_mese2 ?? ($cliente?->minuti_intervento_mese2 ?? null),
-                'zona' => $sede->zona ?? ($cliente?->zona ?? null),
+                'mesi_visita' => $this->normalizeMesiForCheckboxes($sede->mesi_visita ?? []),
+                'minuti_intervento' => $sede->minuti_intervento ?? null,
+                'minuti_intervento_mese1' => $sede->minuti_intervento_mese1 ?? null,
+                'minuti_intervento_mese2' => $sede->minuti_intervento_mese2 ?? null,
+                'zona' => $sede->zona ?? null,
             ];
             return;
         }
