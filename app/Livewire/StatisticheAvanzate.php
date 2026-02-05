@@ -12,6 +12,7 @@ class StatisticheAvanzate extends Component
     public string $graficoSelezionato = 'tecnici';
     public string $dataDa;
     public string $dataA;
+    public string $presetAttivo = 'month';
 
     public array $summary = [];
     public array $charts = [];
@@ -26,6 +27,7 @@ class StatisticheAvanzate extends Component
     {
         $this->dataDa = now()->startOfMonth()->format('Y-m-d');
         $this->dataA  = now()->endOfMonth()->format('Y-m-d');
+        $this->presetAttivo = 'month';
         $this->loadData();
     }
 
@@ -37,11 +39,13 @@ class StatisticheAvanzate extends Component
 
     public function applyFilters(): void
     {
+        $this->presetAttivo = 'custom';
         $this->loadData();
     }
 
     public function preset(string $range): void
     {
+        $this->presetAttivo = $range;
         $today = Carbon::today();
         if ($range === 'month') {
             $this->dataDa = $today->copy()->startOfMonth()->format('Y-m-d');
@@ -279,6 +283,75 @@ class StatisticheAvanzate extends Component
     public function clearDrilldown(): void
     {
         $this->drilldown = [];
+    }
+
+    public function selectDrilldownFromTable(int $index): void
+    {
+        $chart = $this->graficoSelezionato;
+        $cfg = $this->charts[$chart] ?? null;
+        if (!$cfg) {
+            return;
+        }
+
+        $labels = $cfg['labels'] ?? [];
+        $keys = $cfg['keys'] ?? $labels;
+
+        if (!isset($labels[$index])) {
+            return;
+        }
+
+        $this->applyDrilldown([
+            'chart' => $chart,
+            'label' => $labels[$index],
+            'key' => $keys[$index] ?? $labels[$index],
+        ]);
+    }
+
+    public function exportDrilldownCsv()
+    {
+        if (empty($this->drilldown['rows'] ?? [])) {
+            return;
+        }
+
+        $filename = 'statistiche-dettaglio-' . now()->format('Ymd_His') . '.csv';
+        $headers = $this->drilldown['headers'] ?? [];
+        $rows = $this->drilldown['rows'] ?? [];
+        $title = $this->drilldown['title'] ?? '';
+
+        return response()->streamDownload(function () use ($headers, $rows, $title) {
+            $handle = fopen('php://output', 'w');
+            if ($title) {
+                fputcsv($handle, [$title]);
+                fputcsv($handle, []);
+            }
+            if (!empty($headers)) {
+                fputcsv($handle, $headers);
+            }
+            foreach ($rows as $row) {
+                fputcsv($handle, $row);
+            }
+            fclose($handle);
+        }, $filename);
+    }
+
+    public function exportDrilldownPdf()
+    {
+        if (empty($this->drilldown['rows'] ?? [])) {
+            return;
+        }
+
+        $data = [
+            'title' => $this->drilldown['title'] ?? 'Dettaglio statistiche',
+            'headers' => $this->drilldown['headers'] ?? [],
+            'rows' => $this->drilldown['rows'] ?? [],
+            'range' => [$this->dataDa, $this->dataA],
+        ];
+
+        $pdf = app('dompdf.wrapper')->loadView('pdf.statistiche-dettaglio', $data)->setPaper('a4', 'landscape');
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, 'statistiche-dettaglio-' . now()->format('Ymd_His') . '.pdf');
     }
 
     public function applyDrilldown(array $payload): void

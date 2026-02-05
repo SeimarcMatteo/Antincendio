@@ -13,11 +13,14 @@
                     <p class="text-sm text-white/80">Periodo {{ $dataDa }} → {{ $dataA }}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button wire:click="preset('month')" class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-medium">Mese</button>
-                    <button wire:click="preset('30d')" class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-medium">30 giorni</button>
-                    <button wire:click="preset('90d')" class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-medium">90 giorni</button>
-                    <button wire:click="preset('ytd')" class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-medium">YTD</button>
-                    <button wire:click="preset('year')" class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-medium">Ultimo anno</button>
+                    <button wire:click="preset('month')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === 'month' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">Mese</button>
+                    <button wire:click="preset('30d')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === '30d' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">30 giorni</button>
+                    <button wire:click="preset('90d')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === '90d' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">90 giorni</button>
+                    <button wire:click="preset('ytd')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === 'ytd' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">YTD</button>
+                    <button wire:click="preset('year')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === 'year' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">Ultimo anno</button>
+                    @if($presetAttivo === 'custom')
+                        <span class="px-2 py-1 rounded-full text-[10px] uppercase tracking-wide bg-white/25 text-white/90">Personalizzato</span>
+                    @endif
                 </div>
             </div>
         </div>
@@ -80,8 +83,19 @@
             </div>
         </div>
 
+        @php
+            $chartAccent = [
+                'tecnici' => 'border-red-200',
+                'clienti' => 'border-orange-200',
+                'durata' => 'border-violet-200',
+                'categoria' => 'border-emerald-200',
+                'anomalie' => 'border-amber-200',
+                'trend' => 'border-sky-200',
+                'esiti' => 'border-slate-200',
+            ];
+        @endphp
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border-2 {{ $chartAccent[$graficoSelezionato] ?? 'border-slate-200' }} p-5">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-800">{{ $chart['title'] ?? 'Grafico' }}</h2>
@@ -111,9 +125,17 @@
                         @endif
                     </h3>
                     @if(!empty($drilldown['rows'] ?? []))
-                        <button wire:click="clearDrilldown" class="text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded px-2 py-1">
-                            Chiudi
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button wire:click="exportDrilldownCsv" class="text-xs text-slate-700 border border-slate-200 rounded px-2 py-1 hover:border-slate-400">
+                                Esporta CSV
+                            </button>
+                            <button wire:click="exportDrilldownPdf" class="text-xs text-slate-700 border border-slate-200 rounded px-2 py-1 hover:border-slate-400">
+                                Esporta PDF
+                            </button>
+                            <button wire:click="clearDrilldown" class="text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded px-2 py-1">
+                                Chiudi
+                            </button>
+                        </div>
                     @endif
                 </div>
 
@@ -155,7 +177,8 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     @foreach(($chart['table_rows'] ?? []) as $row)
-                                        <tr class="text-slate-700">
+                                        <tr class="text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                            wire:click="selectDrilldownFromTable({{ $loop->index }})">
                                             @foreach($row as $cell)
                                                 <td class="py-2 pr-2">{{ $cell }}</td>
                                             @endforeach
@@ -164,7 +187,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <div class="text-[11px] text-slate-400 mt-2">Clicca un elemento del grafico per il dettaglio.</div>
+                        <div class="text-[11px] text-slate-400 mt-2">Clicca un elemento del grafico o una riga per il dettaglio.</div>
                     @endif
                 @endif
             </div>
