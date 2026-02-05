@@ -51,7 +51,8 @@ class ImportaPresidiMassivo extends Component
 
         $clienti = Cliente::all([
             'id','nome','codice_esterno','mesi_visita',
-            'minuti_intervento','minuti_intervento_mese1','minuti_intervento_mese2','zona'
+            'minuti_intervento','minuti_intervento_mese1','minuti_intervento_mese2','zona',
+            'indirizzo','citta'
         ]);
         $map = [];
         $clientiById = [];
@@ -401,16 +402,8 @@ class ImportaPresidiMassivo extends Component
     {
         $nome = trim((string) $cliente->nome);
         $indirizzo = trim((string) $cliente->indirizzo);
-        $cap = trim((string) $cliente->cap);
         $citta = trim((string) $cliente->citta);
-        $provincia = trim((string) $cliente->provincia);
-
-        $localita = trim(($cap !== '' ? $cap.' ' : '').$citta);
-        if ($provincia !== '') {
-            $localita = trim($localita.' ('.$provincia.')');
-        }
-
-        $dettagli = trim($indirizzo.($indirizzo && $localita ? ', ' : '').$localita);
+        $dettagli = trim($indirizzo.($indirizzo && $citta ? ', ' : '').$citta);
         $label = $nome !== '' ? $nome : 'Cliente';
         if ($dettagli !== '') {
             return $label.' — '.$dettagli;
