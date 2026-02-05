@@ -44,7 +44,7 @@ class ImportaPresidiMassivo extends Component
             $map[$last4][] = $c;
         }
         $sediByCliente = Sede::query()
-            ->select('id','cliente_id','nome')
+            ->select('id','cliente_id','nome','indirizzo','citta','cap','provincia')
             ->get()
             ->groupBy('cliente_id');
 
@@ -74,7 +74,11 @@ class ImportaPresidiMassivo extends Component
                 $row['cliente_id'] = $cliente->id;
                 $row['cliente_nome'] = $cliente->nome;
                 $sedi = $sediByCliente->get($cliente->id, collect())
-                    ->map(fn($s) => ['id' => $s->id, 'nome' => $s->nome])
+                    ->map(fn($s) => [
+                        'id' => $s->id,
+                        'nome' => $s->nome,
+                        'label' => $this->formatSedeLabel($s),
+                    ])
                     ->values()
                     ->all();
                 $row['sedi'] = $sedi;
@@ -245,5 +249,25 @@ class ImportaPresidiMassivo extends Component
             }
         }
         return $out;
+    }
+
+    private function formatSedeLabel(Sede $sede): string
+    {
+        $nome = trim((string) $sede->nome);
+        $indirizzo = trim((string) $sede->indirizzo);
+        $cap = trim((string) $sede->cap);
+        $citta = trim((string) $sede->citta);
+        $provincia = trim((string) $sede->provincia);
+
+        $localita = trim(($cap !== '' ? $cap.' ' : '').$citta);
+        if ($provincia !== '') {
+            $localita = trim($localita.' ('.$provincia.')');
+        }
+
+        $dettagli = trim($indirizzo.($indirizzo && $localita ? ', ' : '').$localita);
+        if ($dettagli !== '') {
+            return $nome.' — '.$dettagli;
+        }
+        return $nome !== '' ? $nome : 'Sede';
     }
 }

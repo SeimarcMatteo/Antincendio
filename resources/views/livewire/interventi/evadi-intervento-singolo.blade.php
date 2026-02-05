@@ -71,104 +71,142 @@
     @endif
     {{-- VISTA TABELLARE --}}
     @if (!$vistaSchede)
-    <div class="overflow-x-auto">
-        <table class="min-w-full text-sm text-gray-800 border bg-white shadow rounded">
-            <thead class="bg-gray-100 text-xs uppercase text-gray-600">
-                <tr>
-                    <th class="p-2">Progressivo</th>
-                    <th class="p-2">Ubicazione</th>
-                    <th class="p-2">Esito</th>
-                    <th class="p-2">Anomalie</th>
-                    <th class="p-2">Sostituzione</th>
-                    <th class="p-2">Note</th>
-                    <th class="p-2">Tipo</th>
-                    <th class="p-2">⚠️ Da Ritirare</th>
-
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($intervento->presidiIntervento as $pi)
-                    @php $d = $input[$pi->id]; @endphp
-                    <tr class="{{ empty($d['esito']) ? 'bg-red-50' : '' }}">
-                        <td class="p-2 font-mono">{{ $pi->presidio->progressivo }}</td>
-                        <td class="p-2"><input type="text" wire:model="input.{{ $pi->id }}.ubicazione" class="w-full border-gray-300 rounded px-2 py-1"></td>
-                        <td class="p-2">
-                            <select wire:model="input.{{ $pi->id }}.esito" class="w-full border-gray-300 rounded px-2 py-1">
-                                <option value="verificato">✅ Verificato</option>
-                                <option value="non_verificato">❌ Non Verificato</option>
-                                <option value="anomalie">⚠️ Anomalie</option>
-                                <option value="sostituito">🔁 Sostituito</option>
-                            </select>
-                            @if($pi->usa_ritiro)
-                                <div class="text-xs mt-1 text-blue-500 font-semibold">Presidio ritirato utilizzato</div>
-                            @endif
-                        </td>
-                        <td class="p-2">
-                            <select multiple wire:model="input.{{ $pi->id }}.anomalie" class="w-full border-gray-300 rounded px-2 py-1">
-                                @foreach(($anomalie[$pi->presidio->categoria] ?? []) as $anomalia)
-                                    <option value="{{ $anomalia->id }}">{{ $anomalia->etichetta }}</option>
+        @php
+            $catStyles = [
+                'Estintore' => ['border' => 'border-red-500', 'bg' => 'bg-red-50', 'label' => 'ESTINTORI'],
+                'Idrante'   => ['border' => 'border-blue-500', 'bg' => 'bg-blue-50', 'label' => 'IDRANTI'],
+                'Porta'     => ['border' => 'border-amber-500', 'bg' => 'bg-amber-50', 'label' => 'PORTE'],
+            ];
+            $groups = $intervento->presidiIntervento->groupBy(function ($pi) {
+                return $pi->presidio->categoria ?? 'Estintore';
+            });
+        @endphp
+        <div class="space-y-6">
+            @foreach ($groups as $cat => $items)
+                @php
+                    $style = $catStyles[$cat] ?? ['border' => 'border-gray-400', 'bg' => 'bg-gray-50', 'label' => strtoupper($cat)];
+                @endphp
+                <div class="border rounded shadow-sm bg-white">
+                    <div class="flex items-center justify-between px-3 py-2 border-l-4 {{ $style['border'] }} {{ $style['bg'] }}">
+                        <div class="font-semibold text-sm">{{ $style['label'] }}</div>
+                        <div class="text-xs text-gray-600">Totale: {{ $items->count() }}</div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm text-gray-800">
+                            <thead class="bg-gray-100 text-xs uppercase text-gray-600">
+                                <tr>
+                                    <th class="p-2">Progressivo</th>
+                                    <th class="p-2">Ubicazione</th>
+                                    <th class="p-2">Esito</th>
+                                    <th class="p-2">Anomalie</th>
+                                    <th class="p-2">Sostituzione</th>
+                                    <th class="p-2">Note</th>
+                                    <th class="p-2">Tipo</th>
+                                    <th class="p-2">⚠️ Da Ritirare</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($items as $pi)
+                                    @php $d = $input[$pi->id]; @endphp
+                                    <tr class="{{ empty($d['esito']) ? 'bg-red-50' : '' }}">
+                                        <td class="p-2 font-mono">{{ $pi->presidio->progressivo }}</td>
+                                        <td class="p-2"><input type="text" wire:model="input.{{ $pi->id }}.ubicazione" class="w-full border-gray-300 rounded px-2 py-1"></td>
+                                        <td class="p-2">
+                                            <select wire:model="input.{{ $pi->id }}.esito" class="w-full border-gray-300 rounded px-2 py-1">
+                                                <option value="verificato">✅ Verificato</option>
+                                                <option value="non_verificato">❌ Non Verificato</option>
+                                                <option value="anomalie">⚠️ Anomalie</option>
+                                                <option value="sostituito">🔁 Sostituito</option>
+                                            </select>
+                                            @if($pi->usa_ritiro)
+                                                <div class="text-xs mt-1 text-blue-500 font-semibold">Presidio ritirato utilizzato</div>
+                                            @endif
+                                        </td>
+                                        <td class="p-2">
+                                            <select multiple wire:model="input.{{ $pi->id }}.anomalie" class="w-full border-gray-300 rounded px-2 py-1">
+                                                @foreach(($anomalie[$pi->presidio->categoria] ?? []) as $anomalia)
+                                                    <option value="{{ $anomalia->id }}">{{ $anomalia->etichetta }}</option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td class="p-2">
+                                            @if ($d['sostituito_con'] ?? false)
+                                                <div class="text-green-500 font-semibold">Sostituito con presidio: {{ $d['sostituito_con']->id }}</div>
+                                            @else
+                                                <button wire:click="toggleSostituzione({{ $pi->id }})" class="bg-blue-500 text-white px-2 py-1 rounded">
+                                                    {{ $d['sostituzione'] ? 'Annulla' : 'Sostituisci' }}
+                                                </button>
+                                                @if ($d['sostituzione'])
+                                                    <div class="mt-2 space-y-1">
+                                                        <select wire:model="input.{{ $pi->id }}.nuovo_tipo_estintore_id" class="w-full border-gray-300 rounded px-2 py-1">
+                                                            <option value="">Tipo Estintore</option>
+                                                            @foreach ($tipiEstintori as $tipo)
+                                                                <option value="{{ $tipo->id }}">{{ $tipo->sigla }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_serbatoio" class="w-full border-gray-300 rounded px-2 py-1">
+                                                        <label class="flex gap-1 items-center text-sm">
+                                                            <input type="checkbox" wire:model="input.{{ $pi->id }}.usa_ritiro" class="border-gray-300">
+                                                            Usa presidio da ritiri
+                                                        </label>
+                                                        <button wire:click="sostituisciPresidio({{ $pi->id }})" class="bg-blue-600 text-white px-3 py-1 rounded text-sm mt-2">
+                                                            Conferma Sostituzione
+                                                        </button>
+                                                    </div>
+                                                @endif
+                                            @endif
+                                        </td>
+                                        <td class="p-2">
+                                            <textarea wire:model="input.{{ $pi->id }}.note" class="w-full border-gray-300 rounded px-2 py-1" rows="2"></textarea>
+                                        </td>
+                                        <td class="p-2">{{ $d['tipo_estintore_sigla'] }}</td>
+                                        <td class="p-2">
+                                            @if($d['deve_ritirare'])
+                                                <span class="text-red-600 font-semibold">Sì</span>
+                                            @else
+                                                <span class="text-gray-500">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-2 text-center">
+                                            <button wire:click="rimuoviPresidioIntervento({{ $pi->id }})"
+                                                class="text-red-600 hover:text-red-800 text-sm"
+                                                onclick="return confirm('Rimuovere questo presidio dall\'intervento?')">
+                                                ❌
+                                            </button>
+                                        </td>
+                                    </tr>
                                 @endforeach
-                            </select>
-                        </td>
-                        <td class="p-2">
-                            @if ($d['sostituito_con'] ?? false)
-                                <div class="text-green-500 font-semibold">Sostituito con presidio: {{ $d['sostituito_con']->id }}</div>
-                            @else
-                                <button wire:click="toggleSostituzione({{ $pi->id }})" class="bg-blue-500 text-white px-2 py-1 rounded">
-                                    {{ $d['sostituzione'] ? 'Annulla' : 'Sostituisci' }}
-                                </button>
-                                @if ($d['sostituzione'])
-                                    <div class="mt-2 space-y-1">
-                                        <select wire:model="input.{{ $pi->id }}.nuovo_tipo_estintore_id" class="w-full border-gray-300 rounded px-2 py-1">
-                                            <option value="">Tipo Estintore</option>
-                                            @foreach ($tipiEstintori as $tipo)
-                                                <option value="{{ $tipo->id }}">{{ $tipo->sigla }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_serbatoio" class="w-full border-gray-300 rounded px-2 py-1">
-                                        <label class="flex gap-1 items-center text-sm">
-                                            <input type="checkbox" wire:model="input.{{ $pi->id }}.usa_ritiro" class="border-gray-300">
-                                            Usa presidio da ritiri
-                                        </label>
-                                        <button wire:click="sostituisciPresidio({{ $pi->id }})" class="bg-blue-600 text-white px-3 py-1 rounded text-sm mt-2">
-                                            Conferma Sostituzione
-                                        </button>
-                                    </div>
-                                @endif
-                            @endif
-                        </td>
-                        <td class="p-2">
-                            <textarea wire:model="input.{{ $pi->id }}.note" class="w-full border-gray-300 rounded px-2 py-1" rows="2"></textarea>
-                        </td>
-                        <td class="p-2">{{ $d['tipo_estintore_sigla'] }}</td>
-                        <td class="p-2">
-                            @if($d['deve_ritirare'])
-                                <span class="text-red-600 font-semibold">Sì</span>
-                            @else
-                                <span class="text-gray-500">—</span>
-                            @endif
-                        </td>
-                        <td class="p-2 text-center">
-                            <button wire:click="rimuoviPresidioIntervento({{ $pi->id }})"
-                                class="text-red-600 hover:text-red-800 text-sm"
-                                onclick="return confirm('Rimuovere questo presidio dall\'intervento?')">
-                                ❌
-                            </button>
-                        </td>
-
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     @else
     {{-- Vista a Schede --}}
     <div class="grid gap-4 md:grid-cols-2">
         @foreach ($intervento->presidiIntervento as $pi)
             @php $d = $input[$pi->id]; @endphp
             @php $nonVerificato = ($d['esito'] ?? 'non_verificato') === 'non_verificato'; @endphp
-        <div class="border rounded shadow p-4 {{ $nonVerificato ? 'border-red-500 bg-red-50' : 'bg-white' }}">
-            <h3 class="text-md font-semibold mb-3 text-gray-800">🧯 Presidio #{{ $pi->presidio->progressivo }} ({{ $pi->presidio->categoria }})</h3>
+            @php
+                $cat = $pi->presidio->categoria ?? 'Estintore';
+                $catBorder = [
+                    'Estintore' => 'border-red-400',
+                    'Idrante' => 'border-blue-400',
+                    'Porta' => 'border-amber-400',
+                ][$cat] ?? 'border-gray-300';
+                $catBadge = [
+                    'Estintore' => 'bg-red-100 text-red-700',
+                    'Idrante' => 'bg-blue-100 text-blue-700',
+                    'Porta' => 'bg-amber-100 text-amber-700',
+                ][$cat] ?? 'bg-gray-100 text-gray-700';
+                $bgClass = $nonVerificato ? 'bg-red-50' : 'bg-white';
+            @endphp
+        <div class="border rounded shadow p-4 border-l-4 {{ $catBorder }} {{ $bgClass }}">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-md font-semibold text-gray-800">🧯 Presidio #{{ $pi->presidio->progressivo }}</h3>
+                <span class="text-xs px-2 py-0.5 rounded {{ $catBadge }}">{{ strtoupper($cat) }}</span>
+            </div>
 
                 <div class="space-y-2">
                     <div>

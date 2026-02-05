@@ -76,7 +76,7 @@
                                             <option value="principal">Sede principale (nessuna sede)</option>
                                             @if(!empty($r['sedi']))
                                                 @foreach($r['sedi'] as $s)
-                                                    <option value="{{ $s['id'] }}">{{ $s['nome'] }}</option>
+                                                    <option value="{{ $s['id'] }}">{{ $s['label'] ?? $s['nome'] }}</option>
                                                 @endforeach
                                             @endif
                                         </select>
