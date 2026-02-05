@@ -5,7 +5,8 @@
 
 <div id="statistiche-root" class="min-h-screen bg-slate-50 text-slate-900">
     <div class="max-w-7xl mx-auto px-5 py-8 space-y-6">
-        <div class="bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 text-white rounded-2xl p-6 shadow-lg">
+        <div class="rounded-2xl p-6 shadow-lg text-white"
+             style="background: linear-gradient(90deg, #e11d48 0%, #ef4444 45%, #f97316 100%); color: #ffffff;">
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
                     <div class="text-sm uppercase tracking-wide text-white/80">Dashboard</div>
@@ -13,13 +14,31 @@
                     <p class="text-sm text-white/80">Periodo {{ $dataDa }} → {{ $dataA }}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button wire:click="preset('month')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === 'month' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">Mese</button>
-                    <button wire:click="preset('30d')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === '30d' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">30 giorni</button>
-                    <button wire:click="preset('90d')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === '90d' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">90 giorni</button>
-                    <button wire:click="preset('ytd')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === 'ytd' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">YTD</button>
-                    <button wire:click="preset('year')" class="px-3 py-1.5 rounded-full text-xs font-medium {{ $presetAttivo === 'year' ? 'bg-white text-slate-900' : 'bg-white/15 text-white/90' }}">Ultimo anno</button>
+                    <button wire:click="preset('month')" class="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style="{{ $presetAttivo === 'month' ? 'background:#ffffff;color:#0f172a;' : 'background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);' }}">
+                        Mese
+                    </button>
+                    <button wire:click="preset('30d')" class="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style="{{ $presetAttivo === '30d' ? 'background:#ffffff;color:#0f172a;' : 'background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);' }}">
+                        30 giorni
+                    </button>
+                    <button wire:click="preset('90d')" class="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style="{{ $presetAttivo === '90d' ? 'background:#ffffff;color:#0f172a;' : 'background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);' }}">
+                        90 giorni
+                    </button>
+                    <button wire:click="preset('ytd')" class="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style="{{ $presetAttivo === 'ytd' ? 'background:#ffffff;color:#0f172a;' : 'background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);' }}">
+                        YTD
+                    </button>
+                    <button wire:click="preset('year')" class="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style="{{ $presetAttivo === 'year' ? 'background:#ffffff;color:#0f172a;' : 'background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);' }}">
+                        Ultimo anno
+                    </button>
                     @if($presetAttivo === 'custom')
-                        <span class="px-2 py-1 rounded-full text-[10px] uppercase tracking-wide bg-white/25 text-white/90">Personalizzato</span>
+                        <span class="px-2 py-1 rounded-full text-[10px] uppercase tracking-wide"
+                              style="background: rgba(255,255,255,0.25); color: rgba(255,255,255,0.95);">
+                            Personalizzato
+                        </span>
                     @endif
                 </div>
             </div>
@@ -74,8 +93,8 @@
                         'esiti' => 'Esiti'
                     ] as $key => $label)
                         <button wire:click="$set('graficoSelezionato','{{ $key }}')"
-                            class="px-3 py-1.5 rounded-full text-xs font-medium border
-                            {{ $graficoSelezionato === $key ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400' }}">
+                            class="px-3 py-1.5 rounded-full text-xs font-medium border"
+                            style="{{ $graficoSelezionato === $key ? 'background:#0f172a;color:#ffffff;border-color:#0f172a;' : 'background:#ffffff;color:#334155;border-color:#e2e8f0;' }}">
                             {{ $label }}
                         </button>
                     @endforeach
