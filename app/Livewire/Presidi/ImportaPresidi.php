@@ -659,6 +659,14 @@ public function ricalcola(string $scope, int $index): void
                     
                     // prima prova col campo dedicato, poi — se vuoto — con tutta la riga
                     $tipoEstId = $this->guessTipoEstintoreId($tipoRaw !== '' ? $tipoRaw : $joinedUp);
+                    if ($isCarrellato && !$tipoEstId) {
+                        $cap = $this->detectCapacity($tipoRaw !== '' ? $tipoRaw : $joinedUp);
+                        if ($cap) {
+                            $tipoEstId = TipoEstintore::where('kg', $cap)
+                                ->where('sigla', 'like', 'ESSI%')
+                                ->value('id');
+                        }
+                    }
                     $tipoEst   = $tipoEstId ? TipoEstintore::with('classificazione')->find($tipoEstId) : null;
                     $classi    = $tipoEst?->classificazione;
 

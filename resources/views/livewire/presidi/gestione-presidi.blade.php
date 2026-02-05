@@ -200,11 +200,15 @@
                                         @php
                                             $hex   = $presidio->tipoEstintore?->colore?->hex ?? '#9CA3AF';
                                             $sigla = $presidio->tipoEstintore?->sigla ?? '';
+                                            $isCarrellato = \App\Livewire\Presidi\ImportaPresidi::isCarrellatoText($presidio->tipo_estintore ?? ($presidio->tipoEstintore?->descrizione ?? ''));
                                         @endphp
                                         <div class="flex items-center gap-2">
                                             <span class="inline-block w-3 h-3 rounded-full ring-1 ring-black/10"
                                                   style="background-color: {{ $hex }}"></span>
                                             <span class="text-xs text-gray-600">{{ $sigla }}</span>
+                                            @if($isCarrellato)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">Carrellato</span>
+                                            @endif
                                         </div>
                                     @endif
                                 </td>

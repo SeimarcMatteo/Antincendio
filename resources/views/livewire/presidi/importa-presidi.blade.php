@@ -28,12 +28,17 @@
             $showScadP = collect($anteprima)->contains(function($r){
                 return !empty($r['scadenza_presidio'] ?? null);
             });
+            $showNote = collect($anteprima)->contains(function($r){
+                return !empty($r['note'] ?? null);
+            });
             $hasMissingAnteprima = collect($anteprima)->contains(function($r){
-                return empty($r['data_serbatoio'] ?? null) || empty($r['tipo_estintore_id'] ?? null);
+                return empty($r['data_serbatoio'] ?? null)
+                    || (empty($r['tipo_estintore_id'] ?? null) && !\App\Livewire\Presidi\ImportaPresidi::isCarrellatoText($r['tipo_estintore'] ?? ''));
             });
             $anteprimaTot = count($anteprima);
             $anteprimaMissing = collect($anteprima)->filter(function($r){
-                return empty($r['data_serbatoio'] ?? null) || empty($r['tipo_estintore_id'] ?? null);
+                return empty($r['data_serbatoio'] ?? null)
+                    || (empty($r['tipo_estintore_id'] ?? null) && !\App\Livewire\Presidi\ImportaPresidi::isCarrellatoText($r['tipo_estintore'] ?? ''));
             })->count();
         @endphp
 
@@ -60,6 +65,7 @@
                         <col style="width: 100px">  {{-- Categoria --}}
                         <col>                        {{-- Ubicazione (elastica) --}}
                         <col style="width: 170px">  {{-- Tipo --}}
+                        <col style="width: 90px">   {{-- Carrellato --}}
                         <col style="width: 110px">  {{-- Contratto --}}
                         <col style="width: 130px">  {{-- Serbatoio --}}
                         <col style="width: 130px">  {{-- Ultima Revisione --}}
@@ -69,6 +75,7 @@
                         <col style="width: 130px">  {{-- Fine vita --}}
                         @if($showAcq)<col style="width: 130px">@endif
                         @if($showScadP)<col style="width: 150px">@endif
+                        @if($showNote)<col style="width: 180px">@endif
                         <col style="width: 150px">  {{-- Sostituzione --}}
                         <col style="width: 60px">   {{-- Azioni/Esito --}}
                     </colgroup>
@@ -78,6 +85,7 @@
                             <th class="px-2 py-1 w-28">Categoria</th>
                             <th class="px-2 py-1">Ubicazione</th>
                             <th class="px-2 py-1">Tipo</th>
+                            <th class="px-2 py-1 w-20">Carrellato</th>
                             <th class="px-2 py-1 w-32">Contratto</th>
                             <th class="px-2 py-1 w-40">Serbatoio&nbsp;<span class="text-red-600">*</span></th>
                             <th class="px-2 py-1 w-40">Ultima Revisione</th>
@@ -91,6 +99,9 @@
                             @if($showScadP)
                                 <th class="px-2 py-1 w-40">Scadenza Presidio</th>
                             @endif
+                            @if($showNote)
+                                <th class="px-2 py-1 w-56">Note</th>
+                            @endif
                             <th class="px-2 py-1 w-40">Sostituzione (operativa)</th>
                             <th class="px-2 py-1 w-16 text-center">Azioni</th>
                         </tr>
@@ -98,8 +109,9 @@
                     <tbody>
                         @foreach($anteprima as $r => $row)
                             @php
+                                $isCarrellato = \App\Livewire\Presidi\ImportaPresidi::isCarrellatoText($row['tipo_estintore'] ?? '');
                                 $missing = ($row['categoria'] ?? '') === 'Estintore'
-                                    ? (empty($row['data_serbatoio']) || empty($row['tipo_estintore_id']))
+                                    ? (empty($row['data_serbatoio']) || (empty($row['tipo_estintore_id']) && !$isCarrellato))
                                     : false;
                             @endphp
                             <tr wire:key="preview-{{ $r }}"
@@ -134,7 +146,7 @@
                                     <select
                                         wire:model.defer="anteprima.{{ $r }}.tipo_estintore_id"
                                         wire:change="ricalcola('anteprima', {{ $r }})"
-                                        class="form-select w-40 text-xs {{ empty($row['tipo_estintore_id']) ? 'bg-yellow-100' : '' }}">
+                                        class="form-select w-40 text-xs {{ (empty($row['tipo_estintore_id']) && !$isCarrellato) ? 'bg-yellow-100' : '' }}">
                                         <option value=""> -- scegli -- </option>
                                         @foreach($tipiEstintore as $id => $label)
                                             <option value="{{ $id }}">{{ $label }}</option>
@@ -143,6 +155,18 @@
                                     @error("anteprima.$r.tipo_estintore_id")
                                         <span class="text-red-600 text-xs">{{ $message }}</span>
                                     @enderror
+                                    @if($isCarrellato)
+                                        <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">Carrellato</span>
+                                    @endif
+                                </td>
+
+                                {{-- carrellato --}}
+                                <td class="px-2 py-1">
+                                    @if($isCarrellato)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">SI</span>
+                                    @else
+                                        <span class="text-gray-400 text-xs">—</span>
+                                    @endif
                                 </td>
 
                  
@@ -227,6 +251,14 @@
                                     </td>
                                 @endif
 
+                                @if($showNote)
+                                    <td class="px-2 py-1">
+                                        <input type="text"
+                                               wire:model.defer="anteprima.{{ $r }}.note"
+                                               class="form-input w-full text-xs">
+                                    </td>
+                                @endif
+
                                 {{-- sostituzione operativa --}}
                                 <td class="px-2 py-1">
                                     <input type="date"
@@ -290,13 +322,17 @@
             }
             $salvatiTot = $rows->count();
             $salvatiMissing = $rows->filter(function($r){
-                return empty($r['data_serbatoio'] ?? null) || empty($r['tipo_estintore_id'] ?? null);
+                return empty($r['data_serbatoio'] ?? null)
+                    || (empty($r['tipo_estintore_id'] ?? null) && !\App\Livewire\Presidi\ImportaPresidi::isCarrellatoText($r['tipo_estintore'] ?? ''));
             })->count();
             $showAcqS = $rows->contains(function($r){
                 return !empty($r['data_acquisto'] ?? null);
             });
             $showScadPS = $rows->contains(function($r){
                 return !empty($r['scadenza_presidio'] ?? null);
+            });
+            $showNoteS = $rows->contains(function($r){
+                return !empty($r['note'] ?? null);
             });
         @endphp
 
@@ -318,6 +354,7 @@
                     <col style="width: 100px">  {{-- Categoria --}}
                     <col>                        {{-- Ubicazione (elastica) --}}
                     <col style="width: 170px">  {{-- Tipo --}}
+                    <col style="width: 90px">   {{-- Carrellato --}}
                     <col style="width: 110px">  {{-- Contratto --}}
                     <col style="width: 130px">  {{-- Serbatoio --}}
                     <col style="width: 130px">  {{-- Ultima Revisione --}}
@@ -327,6 +364,7 @@
                     <col style="width: 130px">  {{-- Fine vita --}}
                     @if($showAcqS)<col style="width: 130px">@endif
                     @if($showScadPS)<col style="width: 150px">@endif
+                    @if($showNoteS)<col style="width: 180px">@endif
                     <col style="width: 150px">  {{-- Sostituzione --}}
                     <col style="width: 60px">   {{-- Azioni/Esito --}}
                 </colgroup>
@@ -336,6 +374,7 @@
                         <th class="px-2 py-1 w-28">Categoria</th>
                         <th class="px-2 py-1">Ubicazione</th>
                         <th class="px-2 py-1">Tipo</th>
+                        <th class="px-2 py-1 w-20">Carrellato</th>
                         <th class="px-2 py-1 w-20">Prog.</th>
                         <th class="px-2 py-1 w-32">Contratto</th>
                         <th class="px-2 py-1 w-36">Serbatoio</th>
@@ -350,18 +389,22 @@
                         @if($showScadPS)
                             <th class="px-2 py-1 w-40">Scadenza Presidio</th>
                         @endif
+                        @if($showNoteS)
+                            <th class="px-2 py-1 w-56">Note</th>
+                        @endif
                         <th class="px-2 py-1 w-40">Sostituzione</th>
                         <th class="px-2 py-1 w-24 text-center">Esito</th>
                         <th class="px-2 py-1 w-8 text-center"></th>
                     </tr>
                 </thead>
                 <tbody>
-                        @foreach($rows as $i => $p)
-                            @php
+                    @foreach($rows as $i => $p)
+                        @php
+                                $isCarrellato = \App\Livewire\Presidi\ImportaPresidi::isCarrellatoText($p['tipo_estintore'] ?? '');
                                 $missing = ($p['categoria'] ?? '') === 'Estintore'
-                                    ? (empty($p['data_serbatoio']) || empty($p['tipo_estintore_id']))
+                                    ? (empty($p['data_serbatoio']) || (empty($p['tipo_estintore_id']) && !$isCarrellato))
                                     : false;
-                            @endphp
+                        @endphp
                         <tr wire:key="row-{{ $p['id'] }}"
                             class="{{ $loop->even ? 'bg-gray-50' : '' }} {{ $missing ? 'bg-yellow-100' : '' }}">
 
@@ -390,12 +433,24 @@
                                 <select
                                     wire:model.defer="presidiSalvati.{{ $i }}.tipo_estintore_id"
                                     wire:change="ricalcola('salvati', {{ $i }})"
-                                    class="form-select text-xs w-40 {{ empty($p['tipo_estintore_id']) ? 'bg-yellow-100' : '' }}">
+                                    class="form-select text-xs w-40 {{ (empty($p['tipo_estintore_id']) && !$isCarrellato) ? 'bg-yellow-100' : '' }}">
                                     <option value="">-- scegli --</option>
                                     @foreach($tipiEstintore as $id => $label)
                                         <option value="{{ $id }}">{{ $label }}</option>
                                     @endforeach
                                 </select>
+                                @if($isCarrellato)
+                                    <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">Carrellato</span>
+                                @endif
+                            </td>
+
+                            {{-- carrellato --}}
+                            <td class="px-2 py-1">
+                                @if($isCarrellato)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">SI</span>
+                                @else
+                                    <span class="text-gray-400 text-xs">—</span>
+                                @endif
                             </td>
 
 
@@ -474,6 +529,14 @@
                                 <td class="px-2 py-1">
                                     <input type="date"
                                            wire:model.defer="presidiSalvati.{{ $i }}.scadenza_presidio"
+                                           class="form-input w-full text-xs">
+                                </td>
+                            @endif
+
+                            @if($showNoteS)
+                                <td class="px-2 py-1">
+                                    <input type="text"
+                                           wire:model.defer="presidiSalvati.{{ $i }}.note"
                                            class="form-input w-full text-xs">
                                 </td>
                             @endif
