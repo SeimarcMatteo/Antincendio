@@ -354,8 +354,12 @@ class StatisticheAvanzate extends Component
         }, 'statistiche-dettaglio-' . now()->format('Ymd_His') . '.pdf');
     }
 
-    public function applyDrilldown(array $payload): void
+    public function applyDrilldown($payload = []): void
     {
+        if (!is_array($payload)) {
+            $payload = [];
+        }
+
         $chart = $payload['chart'] ?? null;
         $label = $payload['label'] ?? null;
         $key = $payload['key'] ?? $label;

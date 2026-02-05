@@ -225,6 +225,16 @@
         const ctx = canvas.getContext('2d');
         if (window.statisticheChart) window.statisticheChart.destroy();
 
+        if (window.Chart) {
+            Chart.defaults.color = '#334155';
+            if (Chart.defaults.plugins && Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels) {
+                Chart.defaults.plugins.legend.labels.color = '#334155';
+            }
+            if (Chart.defaults.scale && Chart.defaults.scale.ticks) {
+                Chart.defaults.scale.ticks.color = '#334155';
+            }
+        }
+
         const options = {
             responsive: true,
             maintainAspectRatio: false,
@@ -232,7 +242,7 @@
                 legend: {
                     position: cfg.type === 'doughnut' ? 'bottom' : 'top',
                     labels: {
-                        color: '#475569',
+                        color: '#334155',
                     },
                 }
             },
@@ -257,8 +267,8 @@
         };
         if (cfg.type !== 'doughnut') {
             options.scales = {
-                x: { ticks: { color: '#64748B' } },
-                y: { beginAtZero: true, ticks: { precision: 0, color: '#64748B' } },
+                x: { ticks: { color: '#334155' } },
+                y: { beginAtZero: true, ticks: { precision: 0, color: '#334155' } },
             };
         }
         if (cfg.axis) {
