@@ -37,6 +37,13 @@ class ImportaPresidiMassivo extends Component
     public function prepareFiles(): void
     {
         $this->fileErrors = [];
+        $prevRows = collect($this->fileRows ?? [])
+            ->keyBy('name')
+            ->map(fn($r) => [
+                'sede_id' => $r['sede_id'] ?? null,
+                'azione' => $r['azione'] ?? null,
+            ])
+            ->all();
         $this->fileRows = [];
         $this->targetInputs = [];
 
@@ -67,6 +74,7 @@ class ImportaPresidiMassivo extends Component
         foreach ($this->files as $i => $file) {
             $name = $file->getClientOriginalName();
             $code4 = $this->extractCode4FromFilename($name);
+            $prev = $prevRows[$name] ?? null;
             $row = [
                 'index' => $i,
                 'name' => $name,
@@ -98,8 +106,14 @@ class ImportaPresidiMassivo extends Component
                     ->values()
                     ->all();
                 $row['sedi'] = $sedi;
-                $row['sede_id'] = count($sedi) ? $sedi[0]['id'] : 'principal';
-                $row['azione'] = 'skip_duplicates';
+                $defaultSede = count($sedi) ? $sedi[0]['id'] : 'principal';
+                $selectedSede = $prev['sede_id'] ?? $defaultSede;
+                if ($selectedSede !== 'principal') {
+                    $exists = collect($sedi)->contains(fn($s) => (string)$s['id'] === (string)$selectedSede);
+                    if (!$exists) $selectedSede = $defaultSede;
+                }
+                $row['sede_id'] = $selectedSede;
+                $row['azione'] = $prev['azione'] ?? 'skip_duplicates';
                 $row['target_key'] = $this->targetKeyFor($row['cliente_id'], $row['sede_id']);
                 $this->ensureTargetInput($row['target_key'], $cliente, $sediById->get($row['sede_id']));
             }
