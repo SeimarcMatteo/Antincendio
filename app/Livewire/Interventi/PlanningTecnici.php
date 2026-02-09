@@ -4,8 +4,6 @@ namespace App\Livewire\Interventi;
 
 use Livewire\Component;
 use App\Models\User;
-use App\Models\InterventoTecnico;
-use Illuminate\Support\Facades\Auth;
 
 class PlanningTecnici extends Component
 {
@@ -29,32 +27,6 @@ class PlanningTecnici extends Component
             });
 
         return view('livewire.interventi.planning-tecnici', compact('tecnici'));
-    }
-
-    public function avviaIntervento(int $interventoId, int $tecnicoId): void
-    {
-        if (Auth::id() !== $tecnicoId) {
-            return;
-        }
-
-        InterventoTecnico::where('intervento_id', $interventoId)
-            ->where('user_id', $tecnicoId)
-            ->update([
-                'started_at' => now(),
-            ]);
-    }
-
-    public function terminaIntervento(int $interventoId, int $tecnicoId): void
-    {
-        if (Auth::id() !== $tecnicoId) {
-            return;
-        }
-
-        InterventoTecnico::where('intervento_id', $interventoId)
-            ->where('user_id', $tecnicoId)
-            ->update([
-                'ended_at' => now(),
-            ]);
     }
 
     public function formatMinutes($minutes): string

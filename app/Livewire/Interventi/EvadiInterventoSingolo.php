@@ -135,7 +135,7 @@ public function salvaNuovoPresidio()
     
     public function mount(Intervento $intervento)
     {
-        $this->intervento = $intervento->load('cliente', 'sede', 'presidiIntervento.presidio.tipoEstintore.colore');
+        $this->intervento = $intervento->load('cliente', 'sede', 'tecnici', 'presidiIntervento.presidio.tipoEstintore.colore');
         $this->durataEffettiva = $this->intervento->durata_effettiva;
         $this->marcaSuggestions = $this->caricaMarcheSuggerite();
 
@@ -183,6 +183,39 @@ public function salvaNuovoPresidio()
             'deve_ritirare' => $deveEssereRitirato,
             ];
         }
+    }
+
+    public function avviaIntervento(): void
+    {
+        $userId = auth()->id();
+        if (!$userId) {
+            return;
+        }
+
+        InterventoTecnico::where('intervento_id', $this->intervento->id)
+            ->where('user_id', $userId)
+            ->update([
+                'started_at' => now(),
+            ]);
+
+        $this->intervento->load('tecnici');
+    }
+
+    public function terminaIntervento(): void
+    {
+        $userId = auth()->id();
+        if (!$userId) {
+            return;
+        }
+
+        InterventoTecnico::where('intervento_id', $this->intervento->id)
+            ->where('user_id', $userId)
+            ->whereNull('ended_at')
+            ->update([
+                'ended_at' => now(),
+            ]);
+
+        $this->intervento->load('tecnici');
     }
 
     public function updatedInput($value, $name): void

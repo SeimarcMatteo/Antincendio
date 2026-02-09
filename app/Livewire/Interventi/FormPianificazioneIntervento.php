@@ -17,6 +17,7 @@ class FormPianificazioneIntervento extends Component
     public $sedeId;
     public $dataIntervento;
     public $tecnici = [];
+    public array $tecniciOrari = [];
     public $tecniciDisponibili = [];
 
     public $meseSelezionato;
@@ -111,6 +112,24 @@ class FormPianificazioneIntervento extends Component
     $this->dataIntervento = $domani->format('Y-m-d');
 }
 
+    public function updatedTecnici(): void
+    {
+        $selezionati = collect($this->tecnici)->map(fn ($id) => (int) $id)->values()->all();
+
+        // rimuovi tecnici non selezionati
+        $this->tecniciOrari = array_intersect_key($this->tecniciOrari, array_flip($selezionati));
+
+        // aggiungi struttura per nuovi selezionati
+        foreach ($selezionati as $id) {
+            if (!isset($this->tecniciOrari[$id])) {
+                $this->tecniciOrari[$id] = [
+                    'inizio' => null,
+                    'fine' => null,
+                ];
+            }
+        }
+    }
+
 
     // 🔽🔽 QUI I METODI CHE MANCAVANO 🔽🔽
 
@@ -171,11 +190,18 @@ class FormPianificazioneIntervento extends Component
 
     public function pianifica()
     {
-        $this->validate([
+        $rules = [
             'clienteId' => 'required|exists:clienti,id',
             'dataIntervento' => 'required|date',
             'tecnici' => 'required|array|min:1',
-        ]);
+        ];
+
+        foreach ($this->tecnici as $tecId) {
+            $rules["tecniciOrari.$tecId.inizio"] = 'required|date_format:H:i';
+            $rules["tecniciOrari.$tecId.fine"] = 'nullable|date_format:H:i|after:tecniciOrari.' . $tecId . '.inizio';
+        }
+
+        $this->validate($rules);
 
         $cliente = Cliente::findOrFail($this->clienteId);
         $sede = $this->sedeId ? Sede::find($this->sedeId) : null;
@@ -192,7 +218,23 @@ class FormPianificazioneIntervento extends Component
             'zona' => $sede->zona ?? $cliente->zona,
         ]);
 
-        $intervento->tecnici()->attach($this->tecnici);
+        $attachData = [];
+        foreach ($this->tecnici as $tecId) {
+            $inizio = $this->tecniciOrari[$tecId]['inizio'] ?? null;
+            $fine = $this->tecniciOrari[$tecId]['fine'] ?? null;
+
+            $startAt = $inizio ? Carbon::parse($this->dataIntervento . ' ' . $inizio) : null;
+            $endAt = $fine
+                ? Carbon::parse($this->dataIntervento . ' ' . $fine)
+                : ($startAt ? $startAt->copy()->addMinutes($durata) : null);
+
+            $attachData[$tecId] = [
+                'scheduled_start_at' => $startAt,
+                'scheduled_end_at' => $endAt,
+            ];
+        }
+
+        $intervento->tecnici()->attach($attachData);
 
         $presidi = Presidio::where('cliente_id', $cliente->id)
             ->when($sede, fn($q) => $q->where('sede_id', $sede->id))
@@ -205,7 +247,7 @@ class FormPianificazioneIntervento extends Component
             ]);
         }
 
-        $this->reset(['clienteId', 'sedeId', 'dataIntervento', 'tecnici']);
+        $this->reset(['clienteId', 'sedeId', 'dataIntervento', 'tecnici', 'tecniciOrari']);
         $this->dispatch('intervento-pianificato');
         $this->dispatch('toast', type: 'success', message: 'Intervento pianificato con successo!');
         $this->applicaFiltri();

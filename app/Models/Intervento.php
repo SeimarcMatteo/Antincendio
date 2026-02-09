@@ -35,7 +35,7 @@ class Intervento extends Model
     public function tecnici()
     {
         return $this->belongsToMany(User::class, 'intervento_tecnico')
-            ->withPivot('started_at', 'ended_at');
+            ->withPivot('started_at', 'ended_at', 'scheduled_start_at', 'scheduled_end_at');
     }
     public function presidiIntervento()
     {

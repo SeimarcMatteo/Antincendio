@@ -162,12 +162,29 @@
 
                 <div class="mb-3">
                     <label class="block text-sm mb-1">Tecnici da assegnare ({{ count($tecniciDisponibili) }})</label>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-2">
                         @foreach($tecniciDisponibili as $tec)
-                            <label class="inline-flex items-center">
-                                <input type="checkbox" wire:model="tecnici" value="{{ $tec->id }}" class="mr-2">
-                                {{ $tec->name }}
-                            </label>
+                            <div class="border rounded p-2 bg-gray-50">
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" wire:model="tecnici" value="{{ $tec->id }}" class="mr-2">
+                                    <span class="font-medium text-sm">{{ $tec->name }}</span>
+                                </label>
+
+                                @if(in_array($tec->id, $tecnici, true))
+                                    <div class="mt-2 grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="block text-xs text-gray-600">Inizio</label>
+                                            <input type="time" wire:model.defer="tecniciOrari.{{ $tec->id }}.inizio" class="input input-bordered input-sm w-full">
+                                            @error("tecniciOrari.$tec->id.inizio") <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-600">Fine</label>
+                                            <input type="time" wire:model.defer="tecniciOrari.{{ $tec->id }}.fine" class="input input-bordered input-sm w-full">
+                                            @error("tecniciOrari.$tec->id.fine") <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
                         @endforeach
                     </div>
                 </div>

@@ -3,6 +3,34 @@
         🛠 Evadi Intervento: <span class="text-gray-800">{{ $intervento->cliente->nome }}</span>
     </h1>
 
+    @php
+        $currentTecnico = $intervento->tecnici->firstWhere('id', auth()->id());
+        $pivot = $currentTecnico?->pivot;
+    @endphp
+    @if($currentTecnico)
+        <div class="flex items-center gap-3 text-sm bg-white border rounded p-3 shadow-sm">
+            <div class="font-semibold text-gray-700">⏱ Timer intervento</div>
+            <div class="text-xs text-gray-600">
+                Inizio: <span class="font-medium">{{ $pivot?->started_at ? $pivot->started_at->format('H:i') : '—' }}</span>
+                · Fine: <span class="font-medium">{{ $pivot?->ended_at ? $pivot->ended_at->format('H:i') : '—' }}</span>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+                <button
+                    class="px-2 py-1 text-xs rounded border {{ $pivot?->started_at ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50' }}"
+                    wire:click="avviaIntervento"
+                    @disabled($pivot?->started_at)>
+                    ▶️ Inizia
+                </button>
+                <button
+                    class="px-2 py-1 text-xs rounded border {{ ($pivot?->started_at && !$pivot?->ended_at) ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 text-gray-400 cursor-not-allowed' }}"
+                    wire:click="terminaIntervento"
+                    @disabled(!$pivot?->started_at || $pivot?->ended_at)>
+                    ⏹ Fine
+                </button>
+            </div>
+        </div>
+    @endif
+
     <datalist id="marca-serbatoio-opzioni">
         @foreach($marcaSuggestions as $marca)
             <option value="{{ $marca }}"></option>

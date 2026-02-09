@@ -13,11 +13,15 @@ class InterventoTecnico extends Model
         'user_id',
         'started_at',
         'ended_at',
+        'scheduled_start_at',
+        'scheduled_end_at',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
+        'scheduled_start_at' => 'datetime',
+        'scheduled_end_at' => 'datetime',
     ];
 
     public function intervento()
