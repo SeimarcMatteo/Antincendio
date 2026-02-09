@@ -41,6 +41,11 @@
               <i class="fa fa-palette mr-1"></i> Colori Estintori
             </button>
             <button class="w-full text-left px-3 py-2 rounded"
+                    :class="tab==='tipi-presidio' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'"
+                    @click="tab='tipi-presidio'">
+              <i class="fa fa-list mr-1"></i> Tipi Idranti/Porte
+            </button>
+            <button class="w-full text-left px-3 py-2 rounded"
                     :class="tab==='utenti' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'"
                     @click="tab='utenti'">
               <i class="fa fa-users mr-1"></i> Gestione Utenti
@@ -66,6 +71,9 @@
         <section class="flex-1 min-h-0 overflow-y-auto p-4">
           <div x-show="tab==='colori'" x-transition>
             @livewire('tipi-estintori.imposta-colore', [], key('settings-colori'))
+          </div>
+          <div x-show="tab==='tipi-presidio'" x-transition>
+            @livewire('tipi-presidio.gestione-tipi', [], key('settings-tipi-presidio'))
           </div>
           <div x-show="tab==='utenti'" x-transition>
             @livewire('utenti.index', [], key('settings-utenti'))

@@ -65,34 +65,6 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700">Tipo Estintore</label>
-                <select wire:model="nuovoPresidio.tipo_estintore_id" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1">
-                    <option value="">Seleziona tipo</option>
-                    @foreach($tipiEstintori as $tipo)
-                        <option value="{{ $tipo->id }}">{{ $tipo->sigla }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Data Serbatoio</label>
-                <input type="date" wire:model="nuovoPresidio.data_serbatoio" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1">
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Marca Serbatoio</label>
-                <div class="flex items-center gap-2">
-                    <input type="text" list="marca-serbatoio-opzioni" wire:model="nuovoPresidio.marca_serbatoio" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1" placeholder="MB / altro">
-                    <button type="button" wire:click="setMarcaMbNuovo" class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">MB</button>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Ultima Revisione</label>
-                <input type="date" wire:model="nuovoPresidio.data_ultima_revisione" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1">
-            </div>
-
-            <div>
                 <label class="block text-sm font-medium text-gray-700">Categoria</label>
                 <select wire:model.defer="nuovoPresidio.categoria" class="w-full border-gray-300 rounded px-2 py-1">
                     <option value="Estintore">Estintore</option>
@@ -100,6 +72,60 @@
                     <option value="Porta">Porta</option>
                 </select>
             </div>
+
+            @if(($nuovoPresidio['categoria'] ?? 'Estintore') === 'Estintore')
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tipo Estintore</label>
+                    <select wire:model="nuovoPresidio.tipo_estintore_id" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1">
+                        <option value="">Seleziona tipo</option>
+                        @foreach($tipiEstintori as $tipo)
+                            <option value="{{ $tipo->id }}">{{ $tipo->sigla }} – {{ $tipo->descrizione }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Data Serbatoio</label>
+                    <input type="date" wire:model="nuovoPresidio.data_serbatoio" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Marca Serbatoio</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" list="marca-serbatoio-opzioni" wire:model="nuovoPresidio.marca_serbatoio" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1" placeholder="MB / altro">
+                        <button type="button" wire:click="setMarcaMbNuovo" class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">MB</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Ultima Revisione</label>
+                    <input type="date" wire:model="nuovoPresidio.data_ultima_revisione" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1">
+                </div>
+            @endif
+
+            @if(($nuovoPresidio['categoria'] ?? '') === 'Idrante')
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tipo Idrante</label>
+                    <select wire:model.defer="nuovoPresidio.idrante_tipo" class="w-full border-gray-300 rounded px-2 py-1">
+                        <option value="">Seleziona tipo</option>
+                        @foreach($tipiIdranti as $tipo)
+                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
+            @if(($nuovoPresidio['categoria'] ?? '') === 'Porta')
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tipo Porta</label>
+                    <select wire:model.defer="nuovoPresidio.porta_tipo" class="w-full border-gray-300 rounded px-2 py-1">
+                        <option value="">Seleziona tipo</option>
+                        @foreach($tipiPorte as $tipo)
+                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
 
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700">Note</label>
@@ -219,32 +245,49 @@
                                                     {{ $d['sostituzione'] ? 'Annulla' : 'Sostituisci' }}
                                                 </button>
                                                 @if ($d['sostituzione'])
+                                                    @php $cat = $pi->presidio->categoria ?? 'Estintore'; @endphp
                                                     <div class="mt-2 space-y-1">
-                                                        <select wire:model="input.{{ $pi->id }}.nuovo_tipo_estintore_id" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1">
-                                                            <option value="">Tipo Estintore</option>
-                                                            @foreach ($tipiEstintori as $tipo)
-                                                                <option value="{{ $tipo->id }}">{{ $tipo->sigla }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                        <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_serbatoio" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1">
-                                                        <div class="flex items-center gap-2">
-                                                            <input type="text" list="marca-serbatoio-opzioni" wire:model="input.{{ $pi->id }}.nuova_marca_serbatoio" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1" placeholder="Marca serbatoio (MB / altro)">
-                                                            <button type="button" wire:click="setMarcaMbSostituzione({{ $pi->id }})" class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">MB</button>
-                                                        </div>
-                                                        <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_ultima_revisione" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1" placeholder="Ultima revisione">
-                                                        <label class="flex gap-1 items-center text-sm">
-                                                            <input type="checkbox" wire:model="input.{{ $pi->id }}.usa_ritiro" class="border-gray-300">
-                                                            Usa presidio da ritiri
-                                                        </label>
-                                                        @php $prev = $previewSostituzione[$pi->id] ?? null; @endphp
-                                                        @if(!empty($prev))
-                                                            <div class="text-xs bg-gray-50 border border-gray-200 rounded p-2 text-gray-700">
-                                                                <span class="font-semibold">Preview scadenze:</span>
-                                                                Revisione: <strong>{{ $prev['revisione'] ? \Carbon\Carbon::parse($prev['revisione'])->format('d/m/Y') : '—' }}</strong>,
-                                                                Collaudo: <strong>{{ $prev['collaudo'] ? \Carbon\Carbon::parse($prev['collaudo'])->format('d/m/Y') : '—' }}</strong>,
-                                                                Fine vita: <strong>{{ $prev['fine_vita'] ? \Carbon\Carbon::parse($prev['fine_vita'])->format('d/m/Y') : '—' }}</strong>,
-                                                                Sostituzione: <strong>{{ $prev['sostituzione'] ? \Carbon\Carbon::parse($prev['sostituzione'])->format('d/m/Y') : '—' }}</strong>
+                                                        @if($cat === 'Estintore')
+                                                            <select wire:model="input.{{ $pi->id }}.nuovo_tipo_estintore_id" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1">
+                                                                <option value="">Tipo Estintore</option>
+                                                                @foreach ($tipiEstintori as $tipo)
+                                                                    <option value="{{ $tipo->id }}">{{ $tipo->sigla }} – {{ $tipo->descrizione }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_serbatoio" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1">
+                                                            <div class="flex items-center gap-2">
+                                                                <input type="text" list="marca-serbatoio-opzioni" wire:model="input.{{ $pi->id }}.nuova_marca_serbatoio" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1" placeholder="Marca serbatoio (MB / altro)">
+                                                                <button type="button" wire:click="setMarcaMbSostituzione({{ $pi->id }})" class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">MB</button>
                                                             </div>
+                                                            <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_ultima_revisione" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1" placeholder="Ultima revisione">
+                                                            <label class="flex gap-1 items-center text-sm">
+                                                                <input type="checkbox" wire:model="input.{{ $pi->id }}.usa_ritiro" class="border-gray-300">
+                                                                Usa presidio da ritiri
+                                                            </label>
+                                                            @php $prev = $previewSostituzione[$pi->id] ?? null; @endphp
+                                                            @if(!empty($prev))
+                                                                <div class="text-xs bg-gray-50 border border-gray-200 rounded p-2 text-gray-700">
+                                                                    <span class="font-semibold">Preview scadenze:</span>
+                                                                    Revisione: <strong>{{ $prev['revisione'] ? \Carbon\Carbon::parse($prev['revisione'])->format('d/m/Y') : '—' }}</strong>,
+                                                                    Collaudo: <strong>{{ $prev['collaudo'] ? \Carbon\Carbon::parse($prev['collaudo'])->format('d/m/Y') : '—' }}</strong>,
+                                                                    Fine vita: <strong>{{ $prev['fine_vita'] ? \Carbon\Carbon::parse($prev['fine_vita'])->format('d/m/Y') : '—' }}</strong>,
+                                                                    Sostituzione: <strong>{{ $prev['sostituzione'] ? \Carbon\Carbon::parse($prev['sostituzione'])->format('d/m/Y') : '—' }}</strong>
+                                                                </div>
+                                                            @endif
+                                                        @elseif($cat === 'Idrante')
+                                                            <select wire:model="input.{{ $pi->id }}.nuovo_idrante_tipo" class="w-full border-gray-300 rounded px-2 py-1">
+                                                                <option value="">Tipo Idrante</option>
+                                                                @foreach ($tipiIdranti as $tipo)
+                                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        @elseif($cat === 'Porta')
+                                                            <select wire:model="input.{{ $pi->id }}.nuovo_porta_tipo" class="w-full border-gray-300 rounded px-2 py-1">
+                                                                <option value="">Tipo Porta</option>
+                                                                @foreach ($tipiPorte as $tipo)
+                                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                                @endforeach
+                                                            </select>
                                                         @endif
                                                         <button wire:click="sostituisciPresidio({{ $pi->id }})" class="bg-blue-600 text-white px-3 py-1 rounded text-sm mt-2">
                                                             Conferma Sostituzione
@@ -259,13 +302,22 @@
                                         <td class="p-2">
                                             @php
                                                 $hex = $pi->presidio->tipoEstintore?->colore?->hex ?? null;
+                                                $cat = $pi->presidio->categoria ?? 'Estintore';
                                             @endphp
                                             <div class="flex items-center gap-2">
                                                 @if($hex)
                                                     <span class="inline-block w-2.5 h-2.5 rounded-full ring-1 ring-black/10"
                                                           style="background-color: {{ $hex }}"></span>
                                                 @endif
-                                                <span>{{ $d['tipo_estintore_sigla'] }}</span>
+                                                @if($cat === 'Estintore')
+                                                    <span><strong>Tipo Estintore:</strong> {{ $pi->presidio->tipoEstintore?->sigla }} – {{ $pi->presidio->tipoEstintore?->descrizione }}</span>
+                                                @elseif($cat === 'Idrante')
+                                                    <span><strong>Tipo Idrante:</strong> {{ $pi->presidio->idrante_tipo ?? '—' }}</span>
+                                                @elseif($cat === 'Porta')
+                                                    <span><strong>Tipo Porta:</strong> {{ $pi->presidio->porta_tipo ?? '—' }}</span>
+                                                @else
+                                                    <span>—</span>
+                                                @endif
                                             </div>
                                         </td>
                                         <td class="p-2">
@@ -349,7 +401,15 @@
                             <span class="inline-block w-2.5 h-2.5 rounded-full ring-1 ring-black/10"
                                   style="background-color: {{ $hex }}"></span>
                         @endif
-                        <strong>Tipo estintore:</strong> {{ $d['tipo_estintore_sigla'] }}
+                        @if($cat === 'Estintore')
+                            <strong>Tipo Estintore:</strong> {{ $pi->presidio->tipoEstintore?->sigla }} – {{ $pi->presidio->tipoEstintore?->descrizione }}
+                        @elseif($cat === 'Idrante')
+                            <strong>Tipo Idrante:</strong> {{ $pi->presidio->idrante_tipo ?? '—' }}
+                        @elseif($cat === 'Porta')
+                            <strong>Tipo Porta:</strong> {{ $pi->presidio->porta_tipo ?? '—' }}
+                        @else
+                            <strong>Tipo:</strong> —
+                        @endif
                     </div>
 
                     @if($d['deve_ritirare'])
@@ -403,47 +463,70 @@
                             </div>
 
                             @if ($d['sostituzione'] ?? false)
+                                @php $cat = $pi->presidio->categoria ?? 'Estintore'; @endphp
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
-                                    <select wire:model="input.{{ $pi->id }}.nuovo_tipo_estintore_id" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1">
-                                        <option value="">Tipo Estintore</option>
-                                        @foreach ($tipiEstintori as $tipo)
-                                            <option value="{{ $tipo->id }}">{{ $tipo->sigla }}</option>
-                                        @endforeach
-                                    </select>
+                                    @if($cat === 'Estintore')
+                                        <select wire:model="input.{{ $pi->id }}.nuovo_tipo_estintore_id" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                            <option value="">Tipo Estintore</option>
+                                            @foreach ($tipiEstintori as $tipo)
+                                                <option value="{{ $tipo->id }}">{{ $tipo->sigla }} – {{ $tipo->descrizione }}</option>
+                                            @endforeach
+                                        </select>
 
-                                    <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_serbatoio" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1">
-                                    <div class="flex items-center gap-2">
-                                        <input type="text" list="marca-serbatoio-opzioni" wire:model="input.{{ $pi->id }}.nuova_marca_serbatoio" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1" placeholder="Marca serbatoio (MB / altro)">
-                                        <button type="button" wire:click="setMarcaMbSostituzione({{ $pi->id }})" class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">MB</button>
-                                    </div>
-                                    <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_ultima_revisione" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                        <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_serbatoio" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                        <div class="flex items-center gap-2">
+                                            <input type="text" list="marca-serbatoio-opzioni" wire:model="input.{{ $pi->id }}.nuova_marca_serbatoio" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1" placeholder="Marca serbatoio (MB / altro)">
+                                            <button type="button" wire:click="setMarcaMbSostituzione({{ $pi->id }})" class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">MB</button>
+                                        </div>
+                                        <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_ultima_revisione" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                    @elseif($cat === 'Idrante')
+                                        <select wire:model="input.{{ $pi->id }}.nuovo_idrante_tipo" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                            <option value="">Tipo Idrante</option>
+                                            @foreach ($tipiIdranti as $tipo)
+                                                <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                            @endforeach
+                                        </select>
+                                    @elseif($cat === 'Porta')
+                                        <select wire:model="input.{{ $pi->id }}.nuovo_porta_tipo" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                            <option value="">Tipo Porta</option>
+                                            @foreach ($tipiPorte as $tipo)
+                                                <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
                                 </div>
-                                @php $prev = $previewSostituzione[$pi->id] ?? null; @endphp
-                                @if(!empty($prev))
-                                    <div class="mt-2 text-xs bg-gray-50 border border-gray-200 rounded p-2 text-gray-700">
-                                        <span class="font-semibold">Preview scadenze:</span>
-                                        Revisione: <strong>{{ $prev['revisione'] ? \Carbon\Carbon::parse($prev['revisione'])->format('d/m/Y') : '—' }}</strong>,
-                                        Collaudo: <strong>{{ $prev['collaudo'] ? \Carbon\Carbon::parse($prev['collaudo'])->format('d/m/Y') : '—' }}</strong>,
-                                        Fine vita: <strong>{{ $prev['fine_vita'] ? \Carbon\Carbon::parse($prev['fine_vita'])->format('d/m/Y') : '—' }}</strong>,
-                                        Sostituzione: <strong>{{ $prev['sostituzione'] ? \Carbon\Carbon::parse($prev['sostituzione'])->format('d/m/Y') : '—' }}</strong>
+                                @if($cat === 'Estintore')
+                                    @php $prev = $previewSostituzione[$pi->id] ?? null; @endphp
+                                    @if(!empty($prev))
+                                        <div class="mt-2 text-xs bg-gray-50 border border-gray-200 rounded p-2 text-gray-700">
+                                            <span class="font-semibold">Preview scadenze:</span>
+                                            Revisione: <strong>{{ $prev['revisione'] ? \Carbon\Carbon::parse($prev['revisione'])->format('d/m/Y') : '—' }}</strong>,
+                                            Collaudo: <strong>{{ $prev['collaudo'] ? \Carbon\Carbon::parse($prev['collaudo'])->format('d/m/Y') : '—' }}</strong>,
+                                            Fine vita: <strong>{{ $prev['fine_vita'] ? \Carbon\Carbon::parse($prev['fine_vita'])->format('d/m/Y') : '—' }}</strong>,
+                                            Sostituzione: <strong>{{ $prev['sostituzione'] ? \Carbon\Carbon::parse($prev['sostituzione'])->format('d/m/Y') : '—' }}</strong>
+                                        </div>
+                                    @endif
+                                @endif
+
+                                @if($cat === 'Estintore')
+                                    <div class="mt-2">
+                                        <label class="text-sm">Stato del presidio ritirato</label>
+                                        <select wire:model="input.{{ $pi->id }}.stato_presidio_ritirato" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                            <option value="Disponibile">Disponibile</option>
+                                            <option value="Rottamato">Rottamato</option>
+                                            <option value="Da Revisionare">Da Revisionare</option>
+                                        </select>
                                     </div>
                                 @endif
 
-                                <div class="mt-2">
-                                    <label class="text-sm">Stato del presidio ritirato</label>
-                                    <select wire:model="input.{{ $pi->id }}.stato_presidio_ritirato" class="w-full text-sm border-gray-300 rounded px-2 py-1">
-                                        <option value="Disponibile">Disponibile</option>
-                                        <option value="Rottamato">Rottamato</option>
-                                        <option value="Da Revisionare">Da Revisionare</option>
-                                    </select>
-                                </div>
-
-                                <div class="mt-2">
-                                    <label class="text-sm flex items-center gap-2">
-                                        <input type="checkbox" wire:model="input.{{ $pi->id }}.usa_ritiro" class="border-gray-300">
-                                        Usa presidio da ritiri
-                                    </label>
-                                </div>
+                                @if($cat === 'Estintore')
+                                    <div class="mt-2">
+                                        <label class="text-sm flex items-center gap-2">
+                                            <input type="checkbox" wire:model="input.{{ $pi->id }}.usa_ritiro" class="border-gray-300">
+                                            Usa presidio da ritiri
+                                        </label>
+                                    </div>
+                                @endif
 
                                 <div class="mt-2">
                                     <button wire:click="sostituisciPresidio({{ $pi->id }})" class="bg-green-600 text-white py-2 px-4 rounded text-sm">

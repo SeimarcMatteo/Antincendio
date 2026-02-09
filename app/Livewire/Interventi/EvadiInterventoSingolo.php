@@ -11,6 +11,7 @@ use App\Models\PresidioRitirato;
 use App\Models\Anomalia;
 use App\Models\TipoEstintore;
 use App\Models\InterventoTecnico;
+use App\Models\TipoPresidio;
 use Carbon\Carbon;
 
 use Livewire\Attributes\On;
@@ -33,6 +34,8 @@ class EvadiInterventoSingolo extends Component
 
     public $firmaCliente; // base64
     public $mostraFirma = false;
+    public array $tipiIdranti = [];
+    public array $tipiPorte = [];
 
     #[On('firmaClienteAcquisita')]
     public function salvaFirmaCliente($data)
@@ -57,6 +60,11 @@ public function apriFormNuovoPresidio()
         'marca_serbatoio' => null,
         'data_ultima_revisione' => null,
         'categoria' => 'Estintore',
+        'idrante_tipo' => null,
+        'idrante_lunghezza' => null,
+        'idrante_sopra_suolo' => false,
+        'idrante_sotto_suolo' => false,
+        'porta_tipo' => null,
         'note' => '',
         'usa_ritiro' => false, // nuovo flag
     ];
@@ -69,7 +77,7 @@ public function salvaNuovoPresidio()
     $clienteId = $this->intervento->cliente_id;
     $sedeId = $this->intervento->sede_id;
     $categoria = $this->nuovoPresidio['categoria'] ?? 'Estintore';
-    if ($this->nuovoPresidio['usa_ritiro']) {
+    if ($categoria === 'Estintore' && $this->nuovoPresidio['usa_ritiro']) {
         $giacenza = \App\Models\GiacenzaPresidio::where('categoria', $this->nuovoPresidio['categoria'])
             ->where('tipo_estintore_id', $this->nuovoPresidio['tipo_estintore_id'])
             ->first();
@@ -83,16 +91,26 @@ public function salvaNuovoPresidio()
     }
     $progressivo = Presidio::prossimoProgressivo($clienteId, $sedeId, $categoria);
 
+    $tipoEstintoreId = $categoria === 'Estintore' ? $this->nuovoPresidio['tipo_estintore_id'] : null;
+    $dataSerbatoio = $categoria === 'Estintore' ? $this->nuovoPresidio['data_serbatoio'] : null;
+    $marcaSerbatoio = $categoria === 'Estintore' ? $this->normalizeMarca($this->nuovoPresidio['marca_serbatoio'] ?? null) : null;
+    $dataUltimaRev = $categoria === 'Estintore' ? ($this->nuovoPresidio['data_ultima_revisione'] ?? null) : null;
+
     $presidio = Presidio::create([
         'cliente_id' => $clienteId,
         'sede_id' => $sedeId,
         'categoria' => $categoria,
         'progressivo' => $progressivo,
         'ubicazione' => $this->nuovoPresidio['ubicazione'],
-        'tipo_estintore_id' => $this->nuovoPresidio['tipo_estintore_id'],
-        'data_serbatoio' => $this->nuovoPresidio['data_serbatoio'],
-        'marca_serbatoio' => $this->normalizeMarca($this->nuovoPresidio['marca_serbatoio'] ?? null),
-        'data_ultima_revisione' => $this->nuovoPresidio['data_ultima_revisione'] ?? null,
+        'tipo_estintore_id' => $tipoEstintoreId,
+        'data_serbatoio' => $dataSerbatoio,
+        'marca_serbatoio' => $marcaSerbatoio,
+        'data_ultima_revisione' => $dataUltimaRev,
+        'idrante_tipo' => $categoria === 'Idrante' ? ($this->nuovoPresidio['idrante_tipo'] ?? null) : null,
+        'idrante_lunghezza' => $this->nuovoPresidio['idrante_lunghezza'] ?? null,
+        'idrante_sopra_suolo' => $this->nuovoPresidio['idrante_sopra_suolo'] ?? false,
+        'idrante_sotto_suolo' => $this->nuovoPresidio['idrante_sotto_suolo'] ?? false,
+        'porta_tipo' => $categoria === 'Porta' ? ($this->nuovoPresidio['porta_tipo'] ?? null) : null,
         'note' => $this->nuovoPresidio['note'],
     ]);
 
@@ -122,6 +140,11 @@ public function salvaNuovoPresidio()
             'nuova_data_serbatoio' => null,
             'nuova_marca_serbatoio' => $presidio->marca_serbatoio,
             'nuova_data_ultima_revisione' => $presidio->data_ultima_revisione,
+            'nuovo_idrante_tipo' => $presidio->idrante_tipo,
+            'nuovo_idrante_lunghezza' => $presidio->idrante_lunghezza,
+            'nuovo_idrante_sopra_suolo' => $presidio->idrante_sopra_suolo ?? false,
+            'nuovo_idrante_sotto_suolo' => $presidio->idrante_sotto_suolo ?? false,
+            'nuovo_porta_tipo' => $presidio->porta_tipo,
             'usa_ritiro' => false,
             'tipo_estintore_sigla' => optional($presidio->tipoEstintore)->sigla ?? '-',
             'deve_ritirare' => $this->verificaRitiroObbligato($presidio),
@@ -138,6 +161,8 @@ public function salvaNuovoPresidio()
         $this->intervento = $intervento->load('cliente', 'sede', 'tecnici', 'presidiIntervento.presidio.tipoEstintore.colore');
         $this->durataEffettiva = $this->intervento->durata_effettiva;
         $this->marcaSuggestions = $this->caricaMarcheSuggerite();
+        $this->tipiIdranti = TipoPresidio::where('categoria', 'Idrante')->orderBy('nome')->pluck('nome')->all();
+        $this->tipiPorte = TipoPresidio::where('categoria', 'Porta')->orderBy('nome')->pluck('nome')->all();
 
         // Se non esistono ancora presidi_intervento, generarli
         if ($this->intervento->presidiIntervento->isEmpty()) {
@@ -178,10 +203,15 @@ public function salvaNuovoPresidio()
             'nuova_data_serbatoio' => null,
             'nuova_marca_serbatoio' => $presidio->marca_serbatoio,
             'nuova_data_ultima_revisione' => $presidio->data_ultima_revisione,
+            'nuovo_idrante_tipo' => $presidio->idrante_tipo,
+            'nuovo_idrante_lunghezza' => $presidio->idrante_lunghezza,
+            'nuovo_idrante_sopra_suolo' => $presidio->idrante_sopra_suolo ?? false,
+            'nuovo_idrante_sotto_suolo' => $presidio->idrante_sotto_suolo ?? false,
+            'nuovo_porta_tipo' => $presidio->porta_tipo,
             'usa_ritiro' => $pi->usa_ritiro ?? false,
             'tipo_estintore_sigla' => optional($presidio->tipoEstintore)->sigla ?? '-',
             'deve_ritirare' => $deveEssereRitirato,
-            ];
+        ];
         }
     }
 
@@ -218,9 +248,24 @@ public function salvaNuovoPresidio()
         $this->intervento->load('tecnici');
     }
 
-    public function updatedInput($value, $name): void
+    public function updated($name, $value): void
+    {
+        if (is_string($name) && str_starts_with($name, 'input.')) {
+            $this->handleInputUpdate($value, $name);
+        }
+    }
+
+    private function handleInputUpdate($value, $name): void
     {
         $segments = explode('.', (string) $name);
+        if (empty($segments)) {
+            return;
+        }
+
+        if ($segments[0] === 'input') {
+            array_shift($segments);
+        }
+
         if (count($segments) < 2) {
             return;
         }
@@ -334,6 +379,7 @@ public function salvaNuovoPresidio()
         if (!$pi) return;
 
         $vecchio = $pi->presidio;
+        $cat = $vecchio->categoria ?? 'Estintore';
 
         $duplicato = Presidio::where('cliente_id', $vecchio->cliente_id)
             ->where('sede_id', $vecchio->sede_id)
@@ -347,7 +393,7 @@ public function salvaNuovoPresidio()
             return;
         }
 
-        if ($dati['usa_ritiro'] ?? false) {
+        if ($cat === 'Estintore' && ($dati['usa_ritiro'] ?? false)) {
             $giacenza = \App\Models\GiacenzaPresidio::firstOrCreate([
                 'categoria' => $vecchio->categoria,
                 'tipo_estintore_id' => $dati['nuovo_tipo_estintore_id'],
@@ -369,10 +415,15 @@ public function salvaNuovoPresidio()
             'categoria' => $vecchio->categoria,
             'progressivo' => $vecchio->progressivo,
             'ubicazione' => $vecchio->ubicazione,
-            'tipo_estintore_id' => $dati['nuovo_tipo_estintore_id'],
-            'data_serbatoio' => $dati['nuova_data_serbatoio'],
-            'marca_serbatoio' => $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio),
-            'data_ultima_revisione' => $dati['nuova_data_ultima_revisione'] ?? null,
+            'tipo_estintore_id' => $cat === 'Estintore' ? ($dati['nuovo_tipo_estintore_id'] ?? null) : null,
+            'data_serbatoio' => $cat === 'Estintore' ? ($dati['nuova_data_serbatoio'] ?? null) : null,
+            'marca_serbatoio' => $cat === 'Estintore' ? $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio) : null,
+            'data_ultima_revisione' => $cat === 'Estintore' ? ($dati['nuova_data_ultima_revisione'] ?? null) : null,
+            'idrante_tipo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_tipo'] ?? $vecchio->idrante_tipo) : null,
+            'idrante_lunghezza' => $cat === 'Idrante' ? ($dati['nuovo_idrante_lunghezza'] ?? $vecchio->idrante_lunghezza) : null,
+            'idrante_sopra_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sopra_suolo'] ?? $vecchio->idrante_sopra_suolo) : false,
+            'idrante_sotto_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sotto_suolo'] ?? $vecchio->idrante_sotto_suolo) : false,
+            'porta_tipo' => $cat === 'Porta' ? ($dati['nuovo_porta_tipo'] ?? $vecchio->porta_tipo) : null,
             'mesi_visita' => $vecchio->mesi_visita,
         ]);
 
@@ -382,7 +433,7 @@ public function salvaNuovoPresidio()
         $nuovo->save();
 
         $statoRitiro = $dati['stato_presidio_ritirato'] ?? null;
-        if ($statoRitiro !== 'Rottamato') {
+        if ($cat === 'Estintore' && $statoRitiro !== 'Rottamato') {
             $giacenza = \App\Models\GiacenzaPresidio::firstOrCreate([
                 'categoria' => $vecchio->categoria,
                 'tipo_estintore_id' => $vecchio->tipo_estintore_id,
@@ -419,13 +470,14 @@ public function salvaNuovoPresidio()
 
         if ($dati['sostituzione']) {
             $vecchio = $pi->presidio;
+            $cat = $vecchio->categoria ?? 'Estintore';
 
             if ($pi->sostituito_con_presidio_id) {
                 $this->messaggioErrore = "Il presidio #{$vecchio->id} è già stato sostituito.";
                 return;
             }
 
-            if ($pi->usa_ritiro) {
+            if ($cat === 'Estintore' && $pi->usa_ritiro) {
                 $giacenza = \App\Models\GiacenzaPresidio::firstOrCreate([
                     'categoria' => $vecchio->categoria,
                     'tipo_estintore_id' => $dati['nuovo_tipo_estintore_id'],
@@ -447,10 +499,15 @@ public function salvaNuovoPresidio()
                 'categoria' => $vecchio->categoria,
                 'progressivo' => $vecchio->progressivo,
                 'ubicazione' => $vecchio->ubicazione,
-                'tipo_estintore_id' => $dati['nuovo_tipo_estintore_id'],
-                'data_serbatoio' => $dati['nuova_data_serbatoio'],
-                'marca_serbatoio' => $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio),
-                'data_ultima_revisione' => $dati['nuova_data_ultima_revisione'] ?? null,
+                'tipo_estintore_id' => $cat === 'Estintore' ? ($dati['nuovo_tipo_estintore_id'] ?? null) : null,
+                'data_serbatoio' => $cat === 'Estintore' ? ($dati['nuova_data_serbatoio'] ?? null) : null,
+                'marca_serbatoio' => $cat === 'Estintore' ? $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio) : null,
+                'data_ultima_revisione' => $cat === 'Estintore' ? ($dati['nuova_data_ultima_revisione'] ?? null) : null,
+                'idrante_tipo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_tipo'] ?? $vecchio->idrante_tipo) : null,
+                'idrante_lunghezza' => $cat === 'Idrante' ? ($dati['nuovo_idrante_lunghezza'] ?? $vecchio->idrante_lunghezza) : null,
+                'idrante_sopra_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sopra_suolo'] ?? $vecchio->idrante_sopra_suolo) : false,
+                'idrante_sotto_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sotto_suolo'] ?? $vecchio->idrante_sotto_suolo) : false,
+                'porta_tipo' => $cat === 'Porta' ? ($dati['nuovo_porta_tipo'] ?? $vecchio->porta_tipo) : null,
                 'mesi_visita' => $vecchio->mesi_visita,
             ]);
 
@@ -460,7 +517,7 @@ public function salvaNuovoPresidio()
             $nuovo->save();
 
             $statoRitiro = $dati['stato_presidio_ritirato'] ?? null;
-            if ($statoRitiro !== 'Rottamato') {
+            if ($cat === 'Estintore' && $statoRitiro !== 'Rottamato') {
                 $giacenza = \App\Models\GiacenzaPresidio::firstOrCreate([
                     'categoria' => $vecchio->categoria,
                     'tipo_estintore_id' => $vecchio->tipo_estintore_id,
