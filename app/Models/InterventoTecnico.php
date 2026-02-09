@@ -11,6 +11,13 @@ class InterventoTecnico extends Model
     protected $fillable = [
         'intervento_id',
         'user_id',
+        'started_at',
+        'ended_at',
+    ];
+
+    protected $casts = [
+        'started_at' => 'datetime',
+        'ended_at' => 'datetime',
     ];
 
     public function intervento()

@@ -66,7 +66,8 @@ class User extends Authenticatable
 
     public function interventi()
     {
-        return $this->belongsToMany(Intervento::class, 'intervento_tecnico');
+        return $this->belongsToMany(Intervento::class, 'intervento_tecnico')
+            ->withPivot('started_at', 'ended_at');
     }
 
 

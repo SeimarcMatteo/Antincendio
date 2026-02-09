@@ -106,6 +106,11 @@
                 'Idrante'   => ['border' => 'border-blue-500', 'bg' => 'bg-blue-50', 'label' => 'IDRANTI'],
                 'Porta'     => ['border' => 'border-amber-500', 'bg' => 'bg-amber-50', 'label' => 'PORTE'],
             ];
+            $catIcons = [
+                'Estintore' => 'fa-fire-extinguisher',
+                'Idrante'   => 'fa-tint',
+                'Porta'     => 'fa-door-open',
+            ];
             $groups = $intervento->presidiIntervento->groupBy(function ($pi) {
                 return $pi->presidio->categoria ?? 'Estintore';
             });
@@ -150,11 +155,14 @@
                                             }
                                         }
                                         $rowMissing = empty($d['esito']);
+                                        $icon = $catIcons[$cat] ?? 'fa-tag';
                                     @endphp
                                     <tr class="{{ $rowMissing ? 'bg-red-50' : '' }}"
                                         style="{{ (!$rowMissing && $rowRgba) ? 'background-color: '.$rowRgba.';' : '' }}">
-                                        <td class="p-2 font-mono">{{ $pi->presidio->progressivo }}</td>
-                                        <td class="p-2"><input type="text" wire:model="input.{{ $pi->id }}.ubicazione" class="w-full border-gray-300 rounded px-2 py-1"></td>
+                                        <td class="p-2 font-mono">
+                                            <i class="fa {{ $icon }} text-gray-500 mr-1"></i>{{ $pi->presidio->progressivo }}
+                                        </td>
+                                        <td class="p-2"><input type="text" wire:model.lazy="input.{{ $pi->id }}.ubicazione" class="w-full border-gray-300 rounded px-2 py-1"></td>
                                         <td class="p-2">
                                             <select wire:model="input.{{ $pi->id }}.esito" class="w-full border-gray-300 rounded px-2 py-1">
                                                 <option value="verificato">✅ Verificato</option>
@@ -216,7 +224,7 @@
                                             @endif
                                         </td>
                                         <td class="p-2">
-                                            <textarea wire:model="input.{{ $pi->id }}.note" class="w-full border-gray-300 rounded px-2 py-1" rows="2"></textarea>
+                                            <textarea wire:model.lazy="input.{{ $pi->id }}.note" class="w-full border-gray-300 rounded px-2 py-1" rows="2"></textarea>
                                         </td>
                                         <td class="p-2">
                                             @php
@@ -270,6 +278,11 @@
                     'Idrante' => 'bg-blue-100 text-blue-700',
                     'Porta' => 'bg-amber-100 text-amber-700',
                 ][$cat] ?? 'bg-gray-100 text-gray-700';
+                $catIcon = [
+                    'Estintore' => 'fa-fire-extinguisher',
+                    'Idrante' => 'fa-tint',
+                    'Porta' => 'fa-door-open',
+                ][$cat] ?? 'fa-tag';
                 $bgClass = $nonVerificato ? 'bg-red-50' : 'bg-white';
                 $hex = $pi->presidio->tipoEstintore?->colore?->hex ?? null;
                 $cardRgba = null;
@@ -286,14 +299,17 @@
         <div class="border rounded shadow p-4 border-l-4 {{ $catBorder }} {{ $bgClass }}"
              style="{{ (!$nonVerificato && $cardRgba) ? 'background-color: '.$cardRgba.';' : '' }}">
             <div class="flex items-center justify-between mb-3">
-                <h3 class="text-md font-semibold text-gray-800">🧯 Presidio #{{ $pi->presidio->progressivo }}</h3>
+                <h3 class="text-md font-semibold text-gray-800">
+                    <i class="fa {{ $catIcon }} text-gray-500 mr-1"></i>
+                    Presidio #{{ $pi->presidio->progressivo }}
+                </h3>
                 <span class="text-xs px-2 py-0.5 rounded {{ $catBadge }}">{{ strtoupper($cat) }}</span>
             </div>
 
                 <div class="space-y-2">
                     <div>
                         <label class="text-sm">Ubicazione</label>
-                        <input type="text" wire:model="input.{{ $pi->id }}.ubicazione" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                        <input type="text" wire:model.lazy="input.{{ $pi->id }}.ubicazione" class="w-full text-sm border-gray-300 rounded px-2 py-1">
                     </div>
                     <div class="text-sm text-gray-700 flex items-center gap-2">
                         @php
@@ -333,7 +349,7 @@
 
                     <div>
                         <label class="text-sm">Note</label>
-                        <textarea wire:model="input.{{ $pi->id }}.note" rows="2" class="w-full text-sm border-gray-300 rounded px-2 py-1"></textarea>
+                        <textarea wire:model.lazy="input.{{ $pi->id }}.note" rows="2" class="w-full text-sm border-gray-300 rounded px-2 py-1"></textarea>
                     </div>
 
                     {{-- Sostituzione --}}

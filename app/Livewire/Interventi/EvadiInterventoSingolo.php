@@ -10,6 +10,7 @@ use App\Models\PresidioIntervento;
 use App\Models\PresidioRitirato;
 use App\Models\Anomalia;
 use App\Models\TipoEstintore;
+use App\Models\InterventoTecnico;
 use Carbon\Carbon;
 
 use Livewire\Attributes\On;
@@ -180,7 +181,40 @@ public function salvaNuovoPresidio()
             'usa_ritiro' => $pi->usa_ritiro ?? false,
             'tipo_estintore_sigla' => optional($presidio->tipoEstintore)->sigla ?? '-',
             'deve_ritirare' => $deveEssereRitirato,
-        ];
+            ];
+        }
+    }
+
+    public function updatedInput($value, $name): void
+    {
+        $segments = explode('.', (string) $name);
+        if (count($segments) < 2) {
+            return;
+        }
+
+        $piId = (int) $segments[0];
+        $field = $segments[1] ?? null;
+        if (!$piId || !$field) {
+            return;
+        }
+
+        $pi = $this->intervento->presidiIntervento->firstWhere('id', $piId) ?? PresidioIntervento::find($piId);
+        if (!$pi) {
+            return;
+        }
+
+        if ($field === 'ubicazione') {
+            $pi->presidio?->update(['ubicazione' => $this->input[$piId]['ubicazione'] ?? $value]);
+            return;
+        }
+
+        if (in_array($field, ['esito', 'note', 'anomalie', 'usa_ritiro'], true)) {
+            $payload = $value;
+            if ($field === 'anomalie') {
+                $payload = $this->input[$piId]['anomalie'] ?? [];
+            }
+            $pi->{$field} = $payload;
+            $pi->save();
         }
     }
     protected function verificaRitiroObbligato(Presidio $presidio): bool
@@ -236,6 +270,9 @@ public function salvaNuovoPresidio()
 
             // Se tutti i presidi sono verificati, completa l'intervento
             $this->intervento->update(['stato' => 'Completato','durata_effettiva' => $this->durataEffettiva,]);
+            InterventoTecnico::where('intervento_id', $this->intervento->id)
+                ->whereNull('ended_at')
+                ->update(['ended_at' => now()]);
             $this->messaggioSuccesso ='Intervento evaso correttamente!';
             return redirect()->route('interventi.evadi');
         } else {
