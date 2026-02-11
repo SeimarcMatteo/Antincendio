@@ -1,10 +1,14 @@
-<div class="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6 space-y-6 lg:space-y-7">
+<div id="evadi-intervento-root"
+     data-intervento-id="{{ $intervento->id }}"
+     class="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6 space-y-6 lg:space-y-7">
     <h1 class="text-2xl font-bold text-red-700">
         🛠 Evadi Intervento:
         <a href="{{ route('clienti.mostra', $intervento->cliente_id) }}" class="text-gray-800 hover:text-red-800 underline">
             {{ $intervento->cliente->nome }}
         </a>
     </h1>
+
+    <div id="offline-sync-banner" class="hidden rounded border px-3 py-2 text-sm"></div>
 
     <div class="bg-white border rounded p-3 shadow-sm text-sm text-gray-700">
         <div class="font-semibold text-gray-800 mb-1">Dati cliente</div>
@@ -1145,6 +1149,8 @@ document.addEventListener('livewire:init', () => {
             }
         });
     }
+
+    initOfflineSync();
 });
 
 canvas.addEventListener('mousedown', start);
@@ -1191,5 +1197,229 @@ function pulisciFirma() {
 function salvaFirma() {
     let base64 = canvas.toDataURL("image/png");
     Livewire.dispatch('firmaClienteAcquisita', { data: { base64: base64 } });
+}
+
+function initOfflineSync() {
+    if (window.__evadiOfflineSyncInit) return;
+    window.__evadiOfflineSyncInit = true;
+
+    const root = document.getElementById('evadi-intervento-root');
+    if (!root) return;
+
+    const banner = document.getElementById('offline-sync-banner');
+    const interventoId = root.dataset.interventoId;
+    const storageKey = `evadi-intervento-offline-${interventoId}`;
+    let debounceId = null;
+    let syncing = false;
+
+    const setBanner = (mode, message, autoHideMs = 0) => {
+        if (!banner) return;
+
+        const map = {
+            offline: 'bg-amber-50 border-amber-300 text-amber-800',
+            syncing: 'bg-blue-50 border-blue-300 text-blue-800',
+            success: 'bg-green-50 border-green-300 text-green-800',
+            error: 'bg-red-50 border-red-300 text-red-800',
+        };
+
+        banner.className = `rounded border px-3 py-2 text-sm ${map[mode] ?? map.offline}`;
+        banner.textContent = message;
+        banner.classList.remove('hidden');
+
+        if (autoHideMs > 0) {
+            setTimeout(() => {
+                if (banner.textContent === message && navigator.onLine) {
+                    banner.classList.add('hidden');
+                }
+            }, autoHideMs);
+        }
+    };
+
+    const getWireModel = (el) => {
+        for (const attr of Array.from(el.attributes || [])) {
+            if (attr.name.startsWith('wire:model')) {
+                return attr.value;
+            }
+        }
+        return null;
+    };
+
+    const setByPath = (obj, path, value) => {
+        const keys = path.split('.');
+        let cur = obj;
+        for (let i = 0; i < keys.length; i++) {
+            const k = keys[i];
+            if (i === keys.length - 1) {
+                cur[k] = value;
+                return;
+            }
+            if (!Object.prototype.hasOwnProperty.call(cur, k) || typeof cur[k] !== 'object' || cur[k] === null) {
+                cur[k] = {};
+            }
+            cur = cur[k];
+        }
+    };
+
+    const getElementValue = (el) => {
+        if (el.type === 'checkbox') return !!el.checked;
+        if (el.type === 'number') {
+            const raw = String(el.value ?? '').trim();
+            return raw === '' ? null : Number(raw);
+        }
+        return el.value ?? null;
+    };
+
+    const collectDraftPayload = () => {
+        const payload = { input: {} };
+        const controls = root.querySelectorAll('input, select, textarea');
+
+        controls.forEach((el) => {
+            const model = getWireModel(el);
+            if (!model) return;
+
+            if (model === 'durataEffettiva') {
+                payload.durataEffettiva = getElementValue(el);
+                return;
+            }
+
+            if (!model.startsWith('input.')) return;
+
+            setByPath(payload, model, getElementValue(el));
+        });
+
+        const anomalyMap = {};
+        const ripMap = {};
+
+        root.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+            const expr = el.getAttribute('wire:change') || '';
+            let m = expr.match(/toggleAnomalia\((\d+),\s*(\d+),/);
+            if (m) {
+                const piId = m[1];
+                const anomId = Number(m[2]);
+                if (!anomalyMap[piId]) anomalyMap[piId] = new Set();
+                if (el.checked) anomalyMap[piId].add(anomId);
+                return;
+            }
+
+            m = expr.match(/toggleAnomaliaRiparata\((\d+),\s*(\d+),/);
+            if (m) {
+                const piId = m[1];
+                const anomId = m[2];
+                if (!ripMap[piId]) ripMap[piId] = {};
+                ripMap[piId][anomId] = !!el.checked;
+            }
+        });
+
+        Object.keys(anomalyMap).forEach((piId) => {
+            if (!payload.input[piId]) payload.input[piId] = {};
+            payload.input[piId].anomalie = Array.from(anomalyMap[piId]).sort((a, b) => a - b);
+        });
+
+        Object.keys(ripMap).forEach((piId) => {
+            if (!payload.input[piId]) payload.input[piId] = {};
+            payload.input[piId].anomalie_riparate = ripMap[piId];
+        });
+
+        return payload;
+    };
+
+    const readDraft = () => {
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) return null;
+            const decoded = JSON.parse(raw);
+            if (!decoded || typeof decoded !== 'object') return null;
+            return decoded;
+        } catch {
+            return null;
+        }
+    };
+
+    const writeDraft = (payload) => {
+        const draft = {
+            pendingSync: true,
+            savedAt: new Date().toISOString(),
+            payload,
+        };
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(draft));
+        } catch (e) {
+            setBanner('error', 'Memoria locale piena: impossibile salvare la bozza offline.');
+        }
+    };
+
+    const getComponent = () => {
+        const componentId = root.getAttribute('wire:id');
+        if (!componentId || !window.Livewire) return null;
+        return window.Livewire.find(componentId);
+    };
+
+    const flushDraft = async () => {
+        if (!navigator.onLine || syncing) return;
+
+        const draft = readDraft();
+        if (!draft || !draft.pendingSync || !draft.payload) return;
+
+        const component = getComponent();
+        if (!component) return;
+
+        syncing = true;
+        setBanner('syncing', 'Internet ripristinato: sincronizzazione modifiche offline in corso...');
+
+        try {
+            await component.call('syncOfflineDraft', draft.payload);
+            localStorage.removeItem(storageKey);
+            setBanner('success', 'Modifiche offline sincronizzate.', 4000);
+        } catch (e) {
+            setBanner('error', 'Sincronizzazione non riuscita. Riprovo automaticamente.');
+        } finally {
+            syncing = false;
+        }
+    };
+
+    const queueDraftIfOffline = () => {
+        if (navigator.onLine) return;
+        const payload = collectDraftPayload();
+        writeDraft(payload);
+        setBanner('offline', 'Sei offline: modifiche salvate in locale. Verranno inviate appena torna internet.');
+    };
+
+    const scheduleOfflineCapture = () => {
+        clearTimeout(debounceId);
+        debounceId = setTimeout(queueDraftIfOffline, 250);
+    };
+
+    root.addEventListener('input', scheduleOfflineCapture, true);
+    root.addEventListener('change', scheduleOfflineCapture, true);
+    root.addEventListener('click', (event) => {
+        const el = event.target.closest('[wire\\:click]');
+        if (!el || navigator.onLine) return;
+
+        const action = (el.getAttribute('wire:click') || '').trim();
+        if (action !== 'salva') return;
+
+        const payload = collectDraftPayload();
+        writeDraft(payload);
+        setBanner('offline', 'Sei offline: bozza salvata in locale. Il completamento intervento verrà possibile quando torna internet.');
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }, true);
+
+    window.addEventListener('offline', () => {
+        setBanner('offline', 'Connessione assente: da ora le modifiche vengono salvate in locale.');
+    });
+
+    window.addEventListener('online', () => {
+        flushDraft();
+    });
+
+    const currentDraft = readDraft();
+    if (!navigator.onLine) {
+        setBanner('offline', 'Connessione assente: da ora le modifiche vengono salvate in locale.');
+    } else if (currentDraft?.pendingSync) {
+        flushDraft();
+    }
+
+    setInterval(flushDraft, 15000);
 }
 </script>

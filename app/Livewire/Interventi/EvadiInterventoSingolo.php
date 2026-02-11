@@ -1407,6 +1407,75 @@ public function salvaNuovoPresidio()
         $pi->save();
     }
 
+    public function syncOfflineDraft($payload = []): array
+    {
+        $payload = is_array($payload) ? $payload : [];
+        $inputRows = is_array($payload['input'] ?? null) ? $payload['input'] : [];
+        $updated = 0;
+
+        foreach ($inputRows as $piIdRaw => $rowRaw) {
+            $piId = (int) $piIdRaw;
+            if ($piId <= 0 || !is_array($rowRaw)) {
+                continue;
+            }
+
+            $pi = $this->intervento->presidiIntervento->firstWhere('id', $piId) ?? PresidioIntervento::find($piId);
+            if (!$pi || (int) $pi->intervento_id !== (int) $this->intervento->id) {
+                continue;
+            }
+
+            $row = $rowRaw;
+            $this->input[$piId] = array_merge($this->input[$piId] ?? [], $row);
+
+            if (array_key_exists('ubicazione', $row) && $pi->presidio) {
+                $nuovaUbicazione = trim((string) $row['ubicazione']);
+                if ($nuovaUbicazione !== '' && $pi->presidio->ubicazione !== $nuovaUbicazione) {
+                    $pi->presidio->update(['ubicazione' => $nuovaUbicazione]);
+                }
+            }
+
+            if (array_key_exists('esito', $row)) {
+                $esito = (string) $row['esito'];
+                if (in_array($esito, ['verificato', 'non_verificato', 'sostituito'], true)) {
+                    $pi->esito = $esito;
+                }
+            }
+
+            if (array_key_exists('note', $row)) {
+                $pi->note = is_scalar($row['note']) ? (string) $row['note'] : null;
+            }
+
+            if (array_key_exists('usa_ritiro', $row)) {
+                $pi->usa_ritiro = filter_var($row['usa_ritiro'], FILTER_VALIDATE_BOOL);
+            }
+
+            if (array_key_exists('anomalie', $row) || array_key_exists('anomalie_riparate', $row)) {
+                $selectedIds = $this->normalizeAnomalieIds($row['anomalie'] ?? []);
+                $riparateMap = $this->normalizeAnomalieRiparate($selectedIds, $row['anomalie_riparate'] ?? []);
+                $this->syncAnomaliePresidioIntervento($pi, $selectedIds, $riparateMap);
+            }
+
+            $pi->save();
+            $updated++;
+        }
+
+        if (array_key_exists('durataEffettiva', $payload) && is_numeric($payload['durataEffettiva'])) {
+            $this->durataEffettiva = max(0, (int) $payload['durataEffettiva']);
+            $this->intervento->durata_effettiva = $this->durataEffettiva;
+            $this->intervento->save();
+        }
+
+        if ($updated > 0) {
+            $this->intervento->load(...$this->interventoRelations());
+            $this->messaggioSuccesso = 'Modifiche offline sincronizzate con successo.';
+        }
+
+        return [
+            'ok' => true,
+            'updated' => $updated,
+        ];
+    }
+
     private function accodaMailRapportinoInterno(): void
     {
         $destinatario = trim((string) config('interventi.internal_report_email', 'debora@antincendiolughese.com'));
