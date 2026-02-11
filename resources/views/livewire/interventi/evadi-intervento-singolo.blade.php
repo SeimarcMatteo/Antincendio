@@ -201,7 +201,7 @@
                         <div class="flex flex-col items-end gap-1">
                             <div class="text-xs text-gray-600">Totale: {{ $items->count() }}</div>
                             @if($cat === 'Idrante' && $showControlloAnnualeIdranti)
-                                <span class="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-orange-500 text-white shadow-sm">
+                                <span class="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-black text-white shadow-sm">
                                     CONTROLLO ANNUALE
                                 </span>
                             @endif
@@ -522,7 +522,7 @@
                 <div class="flex flex-col items-end gap-1">
                     <span class="text-xs px-2 py-0.5 rounded {{ $catBadge }}">{{ strtoupper($cat) }}</span>
                     @if($cat === 'Idrante' && $showControlloAnnualeIdranti)
-                        <span class="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-orange-500 text-white shadow-sm">
+                        <span class="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-black text-white shadow-sm">
                             CONTROLLO ANNUALE
                         </span>
                     @endif
