@@ -45,6 +45,10 @@
                                     <div class="h-1 rounded {{ $minuti > 480 ? 'bg-red-500' : 'bg-green-500' }}" style="width: {{ $pct }}%"></div>
                                 </div>
                                 @foreach($interventiGiorno as $int)
+                                    @php
+                                        $scheduledStart = $int->pivot?->scheduled_start_at ? \Carbon\Carbon::parse($int->pivot->scheduled_start_at) : null;
+                                        $scheduledEnd = $int->pivot?->scheduled_end_at ? \Carbon\Carbon::parse($int->pivot->scheduled_end_at) : null;
+                                    @endphp
                                     <div class="mb-2 text-left p-2 rounded border bg-white shadow-sm">
                                         <div class="flex items-start justify-between gap-2">
                                             <div class="flex-1">
@@ -55,7 +59,17 @@
                                                 @if($int->sede)
                                                     <div class="text-xs text-gray-500">{{ $int->sede->nome }}</div>
                                                 @endif
+                                                <div class="text-xs text-indigo-700 mt-1">
+                                                    🕒 {{ $scheduledStart ? $scheduledStart->format('H:i') : '—' }} - {{ $scheduledEnd ? $scheduledEnd->format('H:i') : '—' }}
+                                                </div>
                                                 <div class="text-xs text-gray-600 mt-1">⏱ {{ $this->formatMinutes($int->durata_minuti) }}</div>
+                                                <div class="mt-2">
+                                                    <label class="text-[11px] text-gray-500">Orario tecnico</label>
+                                                    <input type="time"
+                                                           value="{{ $scheduledStart ? $scheduledStart->format('H:i') : '' }}"
+                                                           wire:change="aggiornaOrarioTecnico({{ $int->id }}, {{ $tec->id }}, $event.target.value)"
+                                                           class="mt-1 w-full border border-gray-300 rounded px-2 py-1 text-xs">
+                                                </div>
                                             </div>
                                             <button wire:click="annullaIntervento({{ $int->id }})"
                                                 class="text-red-600 hover:text-red-800 text-sm font-bold px-1"

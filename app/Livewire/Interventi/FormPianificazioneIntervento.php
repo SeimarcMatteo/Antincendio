@@ -115,7 +115,22 @@ class FormPianificazioneIntervento extends Component
 
     public function updatedTecnici(): void
     {
-        $selezionati = collect($this->tecnici)->map(fn ($id) => (int) $id)->values()->all();
+        $selezionati = collect((array) $this->tecnici)
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        // Normalizza sempre gli ID per evitare mismatch string/int in UI e validazione
+        $current = collect((array) $this->tecnici)
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+        if ($current !== $selezionati) {
+            $this->tecnici = $selezionati;
+        }
 
         // rimuovi tecnici non selezionati
         $this->tecniciOrari = array_intersect_key($this->tecniciOrari, array_flip($selezionati));

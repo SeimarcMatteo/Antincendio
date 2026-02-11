@@ -4,6 +4,8 @@ namespace App\Livewire\Interventi;
 
 use Livewire\Component;
 use App\Models\User;
+use App\Models\Intervento;
+use App\Models\InterventoTecnico;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 
@@ -121,5 +123,45 @@ $gior = $this->giorn;
             return $hours . ' h';
         }
         return $hours . ' h ' . $mins . ' min';
+    }
+
+    public function aggiornaOrarioTecnico(int $interventoId, int $tecnicoId, ?string $orario): void
+    {
+        $pivot = InterventoTecnico::where('intervento_id', $interventoId)
+            ->where('user_id', $tecnicoId)
+            ->first();
+
+        if (!$pivot) {
+            $this->dispatch('toast', type: 'error', message: 'Associazione tecnico/intervento non trovata.');
+            return;
+        }
+
+        if (blank($orario)) {
+            $pivot->scheduled_start_at = null;
+            $pivot->scheduled_end_at = null;
+            $pivot->save();
+            $this->dispatch('toast', type: 'info', message: 'Orario rimosso.');
+            return;
+        }
+
+        if (!preg_match('/^\d{2}:\d{2}$/', (string) $orario)) {
+            $this->dispatch('toast', type: 'error', message: 'Formato orario non valido.');
+            return;
+        }
+
+        $intervento = Intervento::find($interventoId);
+        if (!$intervento) {
+            $this->dispatch('toast', type: 'error', message: 'Intervento non trovato.');
+            return;
+        }
+
+        $startAt = Carbon::parse($intervento->data_intervento . ' ' . $orario);
+        $durata = max(0, (int) ($intervento->durata_minuti ?? 0));
+
+        $pivot->scheduled_start_at = $startAt;
+        $pivot->scheduled_end_at = $startAt->copy()->addMinutes($durata);
+        $pivot->save();
+
+        $this->dispatch('toast', type: 'success', message: 'Orario tecnico aggiornato.');
     }
 }

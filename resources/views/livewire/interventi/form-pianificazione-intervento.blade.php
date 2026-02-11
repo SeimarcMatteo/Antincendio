@@ -164,13 +164,16 @@
                     <label class="block text-sm mb-1">Tecnici da assegnare ({{ count($tecniciDisponibili) }})</label>
                     <div class="space-y-2">
                         @foreach($tecniciDisponibili as $tec)
+                            @php
+                                $tecnicoSelezionato = in_array((int) $tec->id, array_map('intval', (array) $tecnici), true);
+                            @endphp
                             <div class="border rounded p-2 bg-gray-50">
                                 <label class="inline-flex items-center">
                                     <input type="checkbox" wire:model="tecnici" value="{{ $tec->id }}" class="mr-2">
                                     <span class="font-medium text-sm">{{ $tec->name }}</span>
                                 </label>
 
-                                @if(in_array($tec->id, $tecnici, true))
+                                @if($tecnicoSelezionato)
                                     <div class="mt-2">
                                         <div>
                                             <label class="block text-xs text-gray-600">Orario appuntamento</label>
