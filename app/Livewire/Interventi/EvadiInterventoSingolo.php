@@ -10,6 +10,7 @@ use App\Models\PresidioInterventoAnomalia;
 use App\Models\Anomalia;
 use App\Models\TipoEstintore;
 use App\Models\InterventoTecnico;
+use App\Models\InterventoTecnicoSessione;
 use App\Models\TipoPresidio;
 use App\Services\Interventi\OrdinePreventivoService;
 use Carbon\Carbon;
@@ -40,6 +41,11 @@ class EvadiInterventoSingolo extends Component
     public array $editMode = [];
     public array $editPresidio = [];
     public bool $showControlloAnnualeIdranti = false;
+    public bool $timerSessioniEnabled = false;
+    public array $timerSessioni = [];
+    public array $timerSessioniForm = [];
+    public bool $timerAttivo = false;
+    public int $timerTotaleMinuti = 0;
     public array $ordinePreventivo = [
         'found' => false,
         'error' => null,
@@ -235,6 +241,8 @@ public function salvaNuovoPresidio()
     
     public function mount(Intervento $intervento)
     {
+        $this->timerSessioniEnabled = Schema::hasTable('intervento_tecnico_sessioni');
+
         $this->intervento = $intervento->load(
             'cliente',
             'sede',
@@ -307,39 +315,237 @@ public function salvaNuovoPresidio()
         }
 
         $this->caricaOrdinePreventivo();
+        $this->refreshTimerState();
     }
 
     public function avviaIntervento(): void
     {
-        $userId = auth()->id();
-        if (!$userId) {
+        $it = $this->currentInterventoTecnico();
+        if (!$it) {
+            $this->messaggioErrore = 'Tecnico non associato a questo intervento.';
             return;
         }
 
-        InterventoTecnico::where('intervento_id', $this->intervento->id)
-            ->where('user_id', $userId)
-            ->update([
+        if (!$this->timerSessioniEnabled) {
+            $it->update([
                 'started_at' => now(),
+                'ended_at' => null,
             ]);
+            $this->intervento->load('tecnici');
+            $this->refreshTimerState();
+            return;
+        }
 
+        $active = $it->sessioni()
+            ->whereNull('ended_at')
+            ->orderByDesc('started_at')
+            ->first();
+
+        if ($active) {
+            $this->messaggioErrore = 'Hai già una sessione timer in corso.';
+            return;
+        }
+
+        $it->sessioni()->create([
+            'started_at' => now(),
+            'ended_at' => null,
+        ]);
+
+        $this->sincronizzaPivotTimer($it);
         $this->intervento->load('tecnici');
+        $this->refreshTimerState();
+        $this->messaggioSuccesso = 'Sessione timer avviata.';
     }
 
     public function terminaIntervento(): void
     {
-        $userId = auth()->id();
-        if (!$userId) {
+        $it = $this->currentInterventoTecnico();
+        if (!$it) {
+            $this->messaggioErrore = 'Tecnico non associato a questo intervento.';
             return;
         }
 
-        InterventoTecnico::where('intervento_id', $this->intervento->id)
-            ->where('user_id', $userId)
-            ->whereNull('ended_at')
-            ->update([
-                'ended_at' => now(),
-            ]);
+        if (!$this->timerSessioniEnabled) {
+            $it->update(['ended_at' => now()]);
+            $this->intervento->load('tecnici');
+            $this->refreshTimerState();
+            return;
+        }
 
+        $active = $it->sessioni()
+            ->whereNull('ended_at')
+            ->orderByDesc('started_at')
+            ->first();
+
+        if (!$active) {
+            $this->messaggioErrore = 'Nessuna sessione timer in corso.';
+            return;
+        }
+
+        $active->ended_at = now();
+        $active->save();
+
+        $this->sincronizzaPivotTimer($it);
         $this->intervento->load('tecnici');
+        $this->refreshTimerState();
+        $this->messaggioSuccesso = 'Sessione timer chiusa.';
+    }
+
+    public function salvaSessioneTimer(int $sessioneId): void
+    {
+        if (!$this->timerSessioniEnabled) {
+            return;
+        }
+
+        $it = $this->currentInterventoTecnico();
+        if (!$it) {
+            $this->messaggioErrore = 'Tecnico non associato a questo intervento.';
+            return;
+        }
+
+        $sessione = InterventoTecnicoSessione::where('id', $sessioneId)
+            ->where('intervento_tecnico_id', $it->id)
+            ->first();
+        if (!$sessione) {
+            $this->messaggioErrore = 'Sessione timer non trovata.';
+            return;
+        }
+
+        $data = $this->timerSessioniForm[$sessioneId] ?? [];
+        $startRaw = trim((string) ($data['started_at'] ?? ''));
+        $endRaw = trim((string) ($data['ended_at'] ?? ''));
+
+        if ($startRaw === '') {
+            $this->messaggioErrore = 'Data/ora inizio obbligatoria.';
+            return;
+        }
+
+        try {
+            $start = Carbon::parse($startRaw);
+        } catch (\Throwable $e) {
+            $this->messaggioErrore = 'Formato data/ora inizio non valido.';
+            return;
+        }
+
+        $end = null;
+        if ($endRaw !== '') {
+            try {
+                $end = Carbon::parse($endRaw);
+            } catch (\Throwable $e) {
+                $this->messaggioErrore = 'Formato data/ora fine non valido.';
+                return;
+            }
+            if ($end->lt($start)) {
+                $this->messaggioErrore = 'La fine non può essere precedente all\'inizio.';
+                return;
+            }
+        }
+
+        $sessione->started_at = $start;
+        $sessione->ended_at = $end;
+        $sessione->save();
+
+        $this->sincronizzaPivotTimer($it);
+        $this->intervento->load('tecnici');
+        $this->refreshTimerState();
+        $this->messaggioSuccesso = 'Sessione timer aggiornata.';
+    }
+
+    private function currentInterventoTecnico(): ?InterventoTecnico
+    {
+        $userId = auth()->id();
+        if (!$userId) {
+            return null;
+        }
+
+        return InterventoTecnico::where('intervento_id', $this->intervento->id)
+            ->where('user_id', $userId)
+            ->first();
+    }
+
+    private function sincronizzaPivotTimer(InterventoTecnico $it): void
+    {
+        if (!$this->timerSessioniEnabled) {
+            return;
+        }
+
+        $sessioni = $it->sessioni()
+            ->orderBy('started_at')
+            ->get(['started_at', 'ended_at']);
+
+        if ($sessioni->isEmpty()) {
+            $it->started_at = null;
+            $it->ended_at = null;
+            $it->save();
+            return;
+        }
+
+        $firstStart = $sessioni->first()?->started_at;
+        $hasOpen = $sessioni->contains(fn ($s) => $s->ended_at === null);
+        $lastEnd = $sessioni->whereNotNull('ended_at')->max('ended_at');
+
+        $it->started_at = $firstStart;
+        $it->ended_at = $hasOpen ? null : $lastEnd;
+        $it->save();
+    }
+
+    private function refreshTimerState(): void
+    {
+        $this->timerSessioni = [];
+        $this->timerSessioniForm = [];
+        $this->timerAttivo = false;
+        $this->timerTotaleMinuti = 0;
+
+        $it = $this->currentInterventoTecnico();
+        if (!$it) {
+            return;
+        }
+
+        if (!$this->timerSessioniEnabled) {
+            $start = $it->started_at ? Carbon::parse($it->started_at) : null;
+            $end = $it->ended_at ? Carbon::parse($it->ended_at) : null;
+            if ($start) {
+                $min = $start->diffInMinutes($end ?: now());
+                $this->timerSessioni[] = [
+                    'id' => 0,
+                    'started_at' => $start->format('d/m/Y H:i'),
+                    'ended_at' => $end?->format('d/m/Y H:i'),
+                    'minutes' => $min,
+                    'is_open' => $end === null,
+                ];
+                $this->timerAttivo = $end === null;
+                $this->timerTotaleMinuti = (int) $min;
+            }
+            return;
+        }
+
+        $sessioni = $it->sessioni()
+            ->orderByDesc('started_at')
+            ->get();
+
+        foreach ($sessioni as $sessione) {
+            $start = Carbon::parse($sessione->started_at);
+            $end = $sessione->ended_at ? Carbon::parse($sessione->ended_at) : null;
+            $minutes = $start->diffInMinutes($end ?: now());
+
+            $this->timerSessioni[] = [
+                'id' => $sessione->id,
+                'started_at' => $start->format('d/m/Y H:i'),
+                'ended_at' => $end?->format('d/m/Y H:i'),
+                'minutes' => $minutes,
+                'is_open' => $end === null,
+            ];
+
+            $this->timerSessioniForm[$sessione->id] = [
+                'started_at' => $start->format('Y-m-d\TH:i'),
+                'ended_at' => $end ? $end->format('Y-m-d\TH:i') : null,
+            ];
+
+            $this->timerTotaleMinuti += (int) $minutes;
+            if ($end === null) {
+                $this->timerAttivo = true;
+            }
+        }
     }
 
     public function toggleEditPresidio(int $piId): void
@@ -634,9 +840,24 @@ public function salvaNuovoPresidio()
 
             // Se tutti i presidi sono verificati, completa l'intervento
             $this->intervento->update(['stato' => 'Completato','durata_effettiva' => $this->durataEffettiva,]);
-            InterventoTecnico::where('intervento_id', $this->intervento->id)
-                ->whereNull('ended_at')
-                ->update(['ended_at' => now()]);
+            if ($this->timerSessioniEnabled) {
+                $tecniciRows = InterventoTecnico::where('intervento_id', $this->intervento->id)->get(['id', 'started_at', 'ended_at']);
+                $ids = $tecniciRows->pluck('id')->all();
+
+                if (!empty($ids)) {
+                    InterventoTecnicoSessione::whereIn('intervento_tecnico_id', $ids)
+                        ->whereNull('ended_at')
+                        ->update(['ended_at' => now()]);
+                }
+
+                foreach ($tecniciRows as $itRow) {
+                    $this->sincronizzaPivotTimer($itRow);
+                }
+            } else {
+                InterventoTecnico::where('intervento_id', $this->intervento->id)
+                    ->whereNull('ended_at')
+                    ->update(['ended_at' => now()]);
+            }
             $this->messaggioSuccesso ='Intervento evaso correttamente. Apertura rapportino in corso...';
             $this->dispatch(
                 'intervento-completato',

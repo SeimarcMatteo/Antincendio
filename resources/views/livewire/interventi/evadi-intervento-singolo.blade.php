@@ -20,31 +20,76 @@
 
     @php
         $currentTecnico = $intervento->tecnici->firstWhere('id', auth()->id());
-        $pivot = $currentTecnico?->pivot;
-        $start = $pivot?->started_at ? \Carbon\Carbon::parse($pivot->started_at) : null;
-        $end = $pivot?->ended_at ? \Carbon\Carbon::parse($pivot->ended_at) : null;
+        $lastSession = $timerSessioni[0] ?? null;
+        $start = $lastSession['started_at'] ?? '—';
+        $end = $lastSession['ended_at'] ?? '—';
     @endphp
     @if($currentTecnico)
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3 text-sm bg-white border rounded p-3 shadow-sm">
-            <div class="font-semibold text-gray-700">⏱ Timer intervento</div>
-            <div class="text-xs text-gray-600">
-                Inizio: <span class="font-medium">{{ $start ? $start->format('H:i') : '—' }}</span>
-                · Fine: <span class="font-medium">{{ $end ? $end->format('H:i') : '—' }}</span>
+        <div class="text-sm bg-white border rounded p-3 shadow-sm space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div class="font-semibold text-gray-700">⏱ Timer intervento</div>
+                <div class="text-xs text-gray-600 sm:ml-3">
+                    Ultima sessione: <span class="font-medium">{{ $start }}</span> · <span class="font-medium">{{ $end }}</span>
+                </div>
+                <div class="text-xs font-semibold text-gray-700 sm:ml-auto">
+                    Totale: {{ intdiv($timerTotaleMinuti, 60) }}h {{ $timerTotaleMinuti % 60 }}m
+                </div>
             </div>
-            <div class="sm:ml-auto flex items-center gap-2">
+            <div class="flex items-center gap-2">
                 <button
-                    class="px-3 py-2 text-sm rounded border {{ $pivot?->started_at ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50' }}"
+                    class="px-3 py-2 text-sm rounded border {{ $timerAttivo ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50' }}"
                     wire:click="avviaIntervento"
-                    @disabled($pivot?->started_at)>
+                    @disabled($timerAttivo)>
                     ▶️ Inizia
                 </button>
                 <button
-                    class="px-3 py-2 text-sm rounded border {{ ($pivot?->started_at && !$pivot?->ended_at) ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 text-gray-400 cursor-not-allowed' }}"
+                    class="px-3 py-2 text-sm rounded border {{ $timerAttivo ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 text-gray-400 cursor-not-allowed' }}"
                     wire:click="terminaIntervento"
-                    @disabled(!$pivot?->started_at || $pivot?->ended_at)>
+                    @disabled(!$timerAttivo)>
                     ⏹ Fine
                 </button>
             </div>
+
+            @if($timerSessioniEnabled)
+                <div class="border border-gray-200 rounded p-2 bg-gray-50">
+                    <div class="text-xs font-semibold text-gray-700 mb-2">Sessioni tecnico</div>
+                    <div class="space-y-2">
+                        @forelse($timerSessioni as $sess)
+                            <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-end bg-white border rounded p-2">
+                                <div>
+                                    <label class="text-[11px] text-gray-600">Inizio</label>
+                                    <input type="datetime-local"
+                                           wire:model.defer="timerSessioniForm.{{ $sess['id'] }}.started_at"
+                                           class="w-full border-gray-300 rounded px-2 py-1 text-xs">
+                                </div>
+                                <div>
+                                    <label class="text-[11px] text-gray-600">Fine</label>
+                                    <input type="datetime-local"
+                                           wire:model.defer="timerSessioniForm.{{ $sess['id'] }}.ended_at"
+                                           class="w-full border-gray-300 rounded px-2 py-1 text-xs">
+                                </div>
+                                <div class="text-xs text-gray-600">
+                                    <span class="font-medium">Durata:</span> {{ intdiv((int)$sess['minutes'], 60) }}h {{ (int)$sess['minutes'] % 60 }}m
+                                    @if($sess['is_open'])
+                                        <span class="ml-1 text-green-700 font-semibold">(attiva)</span>
+                                    @endif
+                                </div>
+                                <div>
+                                    <button wire:click="salvaSessioneTimer({{ $sess['id'] }})"
+                                            class="px-3 py-2 text-xs rounded border border-gray-300 hover:bg-gray-50 w-full md:w-auto">
+                                        Salva orari
+                                    </button>
+                                </div>
+                                <div class="text-[11px] text-gray-500">
+                                    ID sessione #{{ $sess['id'] }}
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-xs text-gray-500">Nessuna sessione timer registrata.</div>
+                        @endforelse
+                    </div>
+                </div>
+            @endif
         </div>
     @endif
 

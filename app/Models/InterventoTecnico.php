@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InterventoTecnico extends Pivot
 {
@@ -33,5 +34,10 @@ class InterventoTecnico extends Pivot
     public function tecnico()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function sessioni(): HasMany
+    {
+        return $this->hasMany(InterventoTecnicoSessione::class, 'intervento_tecnico_id');
     }
 }
