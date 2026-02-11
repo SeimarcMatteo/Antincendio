@@ -189,6 +189,11 @@
                     </div>
                 </div>
 
+                <div class="mb-3">
+                    <label class="block text-sm mb-1">Note intervento</label>
+                    <textarea wire:model.defer="noteIntervento" class="input input-bordered w-full" rows="3" placeholder="Note per i tecnici (es. orari apertura)"></textarea>
+                </div>
+
                 <button wire:click="pianifica" class="btn btn-primary btn-sm w-full">
                     ✅ Conferma pianificazione
                 </button>

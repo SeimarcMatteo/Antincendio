@@ -26,16 +26,32 @@
                         <th>Sede</th>
                         <th>Data</th>
                         <th>Stato</th>
+                        <th>Note</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($interventi as $intervento)
                         <tr>
-                            <td>{{ $intervento->cliente->nome }}</td>
+                            <td>
+                                <a href="{{ route('clienti.mostra', $intervento->cliente_id) }}" class="text-red-700 hover:text-red-900 underline">
+                                    {{ $intervento->cliente->nome }}
+                                </a>
+                                <div class="text-xs text-gray-600 mt-1 space-y-0.5">
+                                    <div>{{ $intervento->cliente->indirizzo ?? '—' }}, {{ $intervento->cliente->citta ?? '—' }}</div>
+                                    <div>Zona: {{ $intervento->cliente->zona ?? '—' }}</div>
+                                    <div>Tel: {{ $intervento->cliente->telefono ?? '—' }} · Email: {{ $intervento->cliente->email ?? '—' }}</div>
+                                    @if(!empty($intervento->cliente->note))
+                                        <div class="italic">Note: {{ $intervento->cliente->note }}</div>
+                                    @endif
+                                </div>
+                            </td>
                             <td>{{ $intervento->sede->nome ?? 'Sede principale' }}</td>
                             <td>{{ \Carbon\Carbon::parse($intervento->data_intervento)->format('d/m/Y') }}</td>
                             <td>{{ $intervento->stato }}</td>
+                            <td class="min-w-[220px]">
+                                <textarea wire:model.debounce.500ms="noteByIntervento.{{ $intervento->id }}" rows="2" class="w-full text-xs border-gray-300 rounded px-2 py-1" placeholder="Note intervento"></textarea>
+                            </td>
                             <td>
                                 <button wire:click="apriIntervento({{ $intervento->id }})" class="btn btn-xs btn-primary">
                                     ✏️
@@ -53,12 +69,28 @@
                     <div class="border rounded shadow p-4 bg-white">
                         <div class="flex justify-between items-center">
                             <div>
-                                <h3 class="font-semibold text-lg">{{ $intervento->cliente->nome }}</h3>
+                                <h3 class="font-semibold text-lg">
+                                    <a href="{{ route('clienti.mostra', $intervento->cliente_id) }}" class="text-red-700 hover:text-red-900 underline">
+                                        {{ $intervento->cliente->nome }}
+                                    </a>
+                                </h3>
                                 <p class="text-sm text-gray-600">
                                     {{ $intervento->sede->nome ?? 'Sede principale' }} —
                                     {{ \Carbon\Carbon::parse($intervento->data_intervento)->format('d/m/Y') }} —
                                     Stato: <strong>{{ $intervento->stato }}</strong>
                                 </p>
+                                <div class="text-xs text-gray-600 mt-1 space-y-0.5">
+                                    <div>{{ $intervento->cliente->indirizzo ?? '—' }}, {{ $intervento->cliente->citta ?? '—' }}</div>
+                                    <div>Zona: {{ $intervento->cliente->zona ?? '—' }}</div>
+                                    <div>Tel: {{ $intervento->cliente->telefono ?? '—' }} · Email: {{ $intervento->cliente->email ?? '—' }}</div>
+                                    @if(!empty($intervento->cliente->note))
+                                        <div class="italic">Note: {{ $intervento->cliente->note }}</div>
+                                    @endif
+                                </div>
+                                <div class="mt-2">
+                                    <label class="text-xs text-gray-600">Note intervento</label>
+                                    <textarea wire:model.debounce.500ms="noteByIntervento.{{ $intervento->id }}" rows="2" class="w-full text-xs border-gray-300 rounded px-2 py-1" placeholder="Note intervento"></textarea>
+                                </div>
                             </div>
 
                             <button wire:click="apriIntervento({{ $intervento->id }})" class="btn btn-sm btn-primary">

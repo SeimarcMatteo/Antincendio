@@ -1,7 +1,22 @@
 <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
     <h1 class="text-2xl font-bold text-red-700">
-        🛠 Evadi Intervento: <span class="text-gray-800">{{ $intervento->cliente->nome }}</span>
+        🛠 Evadi Intervento:
+        <a href="{{ route('clienti.mostra', $intervento->cliente_id) }}" class="text-gray-800 hover:text-red-800 underline">
+            {{ $intervento->cliente->nome }}
+        </a>
     </h1>
+
+    <div class="bg-white border rounded p-3 shadow-sm text-sm text-gray-700">
+        <div class="font-semibold text-gray-800 mb-1">Dati cliente</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+            <div>Indirizzo: <span class="font-medium">{{ $intervento->cliente->indirizzo ?? '—' }}</span></div>
+            <div>Città: <span class="font-medium">{{ $intervento->cliente->citta ?? '—' }}</span></div>
+            <div>Zona: <span class="font-medium">{{ $intervento->cliente->zona ?? '—' }}</span></div>
+            <div>Telefono: <span class="font-medium">{{ $intervento->cliente->telefono ?? '—' }}</span></div>
+            <div>Email: <span class="font-medium">{{ $intervento->cliente->email ?? '—' }}</span></div>
+            <div>Note: <span class="font-medium">{{ $intervento->cliente->note ?? '—' }}</span></div>
+        </div>
+    </div>
 
     @php
         $currentTecnico = $intervento->tecnici->firstWhere('id', auth()->id());

@@ -16,6 +16,7 @@ class Intervento extends Model
         'durata_effettiva',
         'stato',
         'zona',
+        'note',
         'firma_cliente_base64',
         'fatturato' => 'boolean',
         'fatturazione_payload' => 'array',

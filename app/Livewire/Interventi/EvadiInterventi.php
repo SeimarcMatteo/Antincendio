@@ -10,6 +10,7 @@ class EvadiInterventi extends Component
     public $vista = 'schede';
     public $dataSelezionata;
     public $interventi = [];
+    public array $noteByIntervento = [];
 
     public function mount()
     {
@@ -23,6 +24,12 @@ class EvadiInterventi extends Component
             ->whereDate('data_intervento', $this->dataSelezionata)
             ->whereHas('tecnici', fn ($q) => $q->where('users.id', auth()->id()))
             ->get();
+
+        foreach ($this->interventi as $int) {
+            if (!array_key_exists($int->id, $this->noteByIntervento)) {
+                $this->noteByIntervento[$int->id] = $int->note;
+            }
+        }
     }
 
     
@@ -38,6 +45,16 @@ class EvadiInterventi extends Component
     public function apriIntervento($id)
     {
         return redirect()->route('interventi.evadi.dettaglio', ['intervento' => $id]);
+    }
+
+    public function updatedNoteByIntervento($value, $key): void
+    {
+        $id = (int) $key;
+        if (!$id) return;
+        $intervento = Intervento::find($id);
+        if (!$intervento) return;
+        $intervento->note = $value;
+        $intervento->save();
     }
 
     public function render()

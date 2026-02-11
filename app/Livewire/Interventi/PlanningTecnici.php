@@ -4,10 +4,12 @@ namespace App\Livewire\Interventi;
 
 use Livewire\Component;
 use App\Models\User;
+use App\Models\Intervento;
 
 class PlanningTecnici extends Component
 {
     public $dataSelezionata;
+    public array $noteByIntervento = [];
 
     public function mount()
     {
@@ -26,7 +28,25 @@ class PlanningTecnici extends Component
                 return $tec;
             });
 
+        foreach ($tecnici as $tec) {
+            foreach ($tec->interventi as $int) {
+                if (!array_key_exists($int->id, $this->noteByIntervento)) {
+                    $this->noteByIntervento[$int->id] = $int->note;
+                }
+            }
+        }
+
         return view('livewire.interventi.planning-tecnici', compact('tecnici'));
+    }
+
+    public function updatedNoteByIntervento($value, $key): void
+    {
+        $id = (int) $key;
+        if (!$id) return;
+        $intervento = Intervento::find($id);
+        if (!$intervento) return;
+        $intervento->note = $value;
+        $intervento->save();
     }
 
     public function formatMinutes($minutes): string

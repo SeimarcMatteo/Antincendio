@@ -25,6 +25,10 @@
                                     {{ $int->pivot->scheduled_end_at ? $int->pivot->scheduled_end_at->format('H:i') : '—' }}
                                 </span>
                             </div>
+                            <div class="mt-2">
+                                <label class="text-xs text-gray-600">Note intervento</label>
+                                <textarea wire:model.debounce.500ms="noteByIntervento.{{ $int->id }}" rows="2" class="w-full text-xs border-gray-300 rounded px-2 py-1" placeholder="Note per i tecnici"></textarea>
+                            </div>
                         </div>
                     @endforeach
                 @else

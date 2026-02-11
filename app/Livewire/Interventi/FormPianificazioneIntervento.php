@@ -19,6 +19,7 @@ class FormPianificazioneIntervento extends Component
     public $tecnici = [];
     public array $tecniciOrari = [];
     public $tecniciDisponibili = [];
+    public ?string $noteIntervento = null;
 
     public $meseSelezionato;
     public $annoSelezionato;
@@ -216,6 +217,7 @@ class FormPianificazioneIntervento extends Component
             'durata_minuti' => $durata,
             'stato' => 'Pianificato',
             'zona' => $sede->zona ?? $cliente->zona,
+            'note' => $this->noteIntervento,
         ]);
 
         $attachData = [];
@@ -247,7 +249,7 @@ class FormPianificazioneIntervento extends Component
             ]);
         }
 
-        $this->reset(['clienteId', 'sedeId', 'dataIntervento', 'tecnici', 'tecniciOrari']);
+        $this->reset(['clienteId', 'sedeId', 'dataIntervento', 'tecnici', 'tecniciOrari', 'noteIntervento']);
         $this->dispatch('intervento-pianificato');
         $this->dispatch('toast', type: 'success', message: 'Intervento pianificato con successo!');
         $this->applicaFiltri();
