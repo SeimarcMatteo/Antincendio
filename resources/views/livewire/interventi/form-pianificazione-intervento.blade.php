@@ -167,23 +167,26 @@
                             @php
                                 $tecnicoSelezionato = in_array((int) $tec->id, array_map('intval', (array) $tecnici), true);
                             @endphp
-                            <div class="border rounded p-2 bg-gray-50">
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" wire:model="tecnici" value="{{ $tec->id }}" class="mr-2">
-                                    <span class="font-medium text-sm">{{ $tec->name }}</span>
-                                </label>
-
-                                @if($tecnicoSelezionato)
-                                    <div class="mt-2">
-                                        <div>
-                                            <label class="block text-xs text-gray-600">Orario appuntamento</label>
-                                            <input type="time" wire:model.defer="tecniciOrari.{{ $tec->id }}.inizio" class="input input-bordered input-sm w-full">
-                                            @error("tecniciOrari.$tec->id.inizio") <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                                        </div>
+                            <div class="border rounded p-2 {{ $tecnicoSelezionato ? 'bg-red-50 border-red-200' : 'bg-gray-50' }}">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" wire:model.live="tecnici" value="{{ $tec->id }}" class="mr-2">
+                                        <span class="font-medium text-sm">{{ $tec->name }}</span>
+                                    </label>
+                                    <div>
+                                        <label class="block text-xs text-gray-600">Orario appuntamento</label>
+                                        <input type="time"
+                                               wire:model.defer="tecniciOrari.{{ $tec->id }}.inizio"
+                                               @disabled(!$tecnicoSelezionato)
+                                               class="input input-bordered input-sm w-full {{ $tecnicoSelezionato ? '' : 'bg-gray-100 text-gray-400 cursor-not-allowed' }}">
+                                        @error("tecniciOrari.$tec->id.inizio") <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                                     </div>
-                                @endif
+                                </div>
                             </div>
                         @endforeach
+                    </div>
+                    <div class="text-xs text-gray-500 mt-2">
+                        L'orario viene richiesto qui in pianificazione per ogni tecnico selezionato.
                     </div>
                 </div>
 

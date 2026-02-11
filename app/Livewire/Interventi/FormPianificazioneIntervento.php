@@ -98,20 +98,22 @@ class FormPianificazioneIntervento extends Component
      * Carica i dati per la pianificazione in base a cliente, sede, mese e anno.
      */
     public function caricaDati($clienteId, $sedeId = null, $mese = null, $anno = null)
-{
-    $this->clienteId = $clienteId;
-    $this->sedeId = $sedeId;
+    {
+        $this->clienteId = $clienteId;
+        $this->sedeId = $sedeId;
+        $this->tecnici = [];
+        $this->tecniciOrari = [];
 
-    // Se non arrivano mese/anno uso oggi+1
-    if ($mese && $anno) {
-        $oggi = now();
-        $domani = Carbon::create($anno, $mese, min($oggi->day, 28))->addDay();
-    } else {
-        $domani = now()->addDay();
+        // Se non arrivano mese/anno uso oggi+1
+        if ($mese && $anno) {
+            $oggi = now();
+            $domani = Carbon::create($anno, $mese, min($oggi->day, 28))->addDay();
+        } else {
+            $domani = now()->addDay();
+        }
+
+        $this->dataIntervento = $domani->format('Y-m-d');
     }
-
-    $this->dataIntervento = $domani->format('Y-m-d');
-}
 
     public function updatedTecnici(): void
     {
@@ -139,7 +141,7 @@ class FormPianificazioneIntervento extends Component
         foreach ($selezionati as $id) {
             if (!isset($this->tecniciOrari[$id])) {
                 $this->tecniciOrari[$id] = [
-                    'inizio' => null,
+                    'inizio' => '08:00',
                 ];
             }
         }
