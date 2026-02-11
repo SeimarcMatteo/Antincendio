@@ -36,6 +36,8 @@ class EvadiInterventoSingolo extends Component
     public $mostraFirma = false;
     public array $tipiIdranti = [];
     public array $tipiPorte = [];
+    public array $editMode = [];
+    public array $editPresidio = [];
 
     #[On('firmaClienteAcquisita')]
     public function salvaFirmaCliente($data)
@@ -249,6 +251,104 @@ public function salvaNuovoPresidio()
             ]);
 
         $this->intervento->load('tecnici');
+    }
+
+    public function toggleEditPresidio(int $piId): void
+    {
+        $isOpen = (bool) ($this->editMode[$piId] ?? false);
+        if ($isOpen) {
+            $this->editMode[$piId] = false;
+            return;
+        }
+
+        $pi = $this->intervento->presidiIntervento->firstWhere('id', $piId) ?? PresidioIntervento::find($piId);
+        if (!$pi || !$pi->presidio) {
+            return;
+        }
+
+        $p = $pi->presidio;
+        $this->editPresidio[$piId] = [
+            'progressivo' => $p->progressivo,
+            'ubicazione' => $p->ubicazione,
+            'tipo_estintore_id' => $p->tipo_estintore_id,
+            'data_serbatoio' => $p->data_serbatoio ? \Carbon\Carbon::parse($p->data_serbatoio)->format('Y-m-d') : null,
+            'data_ultima_revisione' => $p->data_ultima_revisione ? \Carbon\Carbon::parse($p->data_ultima_revisione)->format('Y-m-d') : null,
+            'idrante_tipo' => $p->idrante_tipo,
+            'porta_tipo' => $p->porta_tipo,
+        ];
+
+        $this->editMode[$piId] = true;
+    }
+
+    public function salvaModificaPresidio(int $piId): void
+    {
+        $pi = $this->intervento->presidiIntervento->firstWhere('id', $piId) ?? PresidioIntervento::find($piId);
+        if (!$pi || !$pi->presidio) {
+            return;
+        }
+        $p = $pi->presidio;
+        $data = $this->editPresidio[$piId] ?? [];
+
+        $progressivo = trim((string) ($data['progressivo'] ?? ''));
+        if ($progressivo === '') {
+            $this->messaggioErrore = 'Progressivo obbligatorio.';
+            return;
+        }
+
+        $dup = Presidio::where('cliente_id', $p->cliente_id)
+            ->where('sede_id', $p->sede_id)
+            ->where('categoria', $p->categoria)
+            ->where('progressivo', $progressivo)
+            ->where('attivo', true)
+            ->where('id', '!=', $p->id)
+            ->exists();
+
+        if ($dup) {
+            $this->messaggioErrore = 'Esiste già un presidio attivo con questo progressivo.';
+            return;
+        }
+
+        if (($p->categoria ?? 'Estintore') === 'Estintore') {
+            if (empty($data['tipo_estintore_id']) || empty($data['data_serbatoio'])) {
+                $this->messaggioErrore = 'Tipo estintore e data serbatoio sono obbligatori.';
+                return;
+            }
+        }
+
+        $p->progressivo = $progressivo;
+        $p->ubicazione = $data['ubicazione'] ?? $p->ubicazione;
+
+        if (($p->categoria ?? 'Estintore') === 'Estintore') {
+            $p->tipo_estintore_id = $data['tipo_estintore_id'] ?? null;
+            $p->data_serbatoio = $data['data_serbatoio'] ?? null;
+            $p->data_ultima_revisione = $data['data_ultima_revisione'] ?? null;
+            $p->calcolaScadenze();
+        } elseif ($p->categoria === 'Idrante') {
+            $p->idrante_tipo = $this->normalizeTipoPresidio($data['idrante_tipo'] ?? null);
+        } elseif ($p->categoria === 'Porta') {
+            $p->porta_tipo = $this->normalizeTipoPresidio($data['porta_tipo'] ?? null);
+        }
+
+        $p->save();
+
+        $this->editMode[$piId] = false;
+        $this->messaggioSuccesso = 'Presidio aggiornato.';
+        $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore');
+
+        if (isset($this->input[$piId])) {
+            $this->input[$piId]['ubicazione'] = $p->ubicazione;
+            $this->input[$piId]['tipo_estintore_sigla'] = optional($p->tipoEstintore)->sigla ?? '-';
+        }
+    }
+
+    public function salvaEsito(int $piId): void
+    {
+        $pi = $this->intervento->presidiIntervento->firstWhere('id', $piId) ?? PresidioIntervento::find($piId);
+        if (!$pi) {
+            return;
+        }
+        $pi->esito = $this->input[$piId]['esito'] ?? $pi->esito;
+        $pi->save();
     }
 
     public function updated($name, $value): void

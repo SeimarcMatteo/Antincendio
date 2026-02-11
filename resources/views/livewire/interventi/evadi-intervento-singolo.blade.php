@@ -220,7 +220,7 @@
                                         </td>
                                         <td class="p-2"><input type="text" wire:model.lazy="input.{{ $pi->id }}.ubicazione" class="w-full border-gray-300 rounded px-2 py-1"></td>
                                         <td class="p-2">
-                                            <select wire:model="input.{{ $pi->id }}.esito" class="w-full border-gray-300 rounded px-2 py-1">
+                                            <select wire:model="input.{{ $pi->id }}.esito" wire:change="salvaEsito({{ $pi->id }})" class="w-full border-gray-300 rounded px-2 py-1">
                                                 <option value="verificato">✅ Verificato</option>
                                                 <option value="non_verificato">❌ Non Verificato</option>
                                                 <option value="anomalie">⚠️ Anomalie</option>
@@ -328,6 +328,11 @@
                                             @endif
                                         </td>
                                         <td class="p-2 text-center">
+                                            <button wire:click="toggleEditPresidio({{ $pi->id }})"
+                                                class="text-blue-600 hover:text-blue-800 text-sm mr-2"
+                                                title="Modifica presidio">
+                                                ✏️
+                                            </button>
                                             <button wire:click="rimuoviPresidioIntervento({{ $pi->id }})"
                                                 class="text-red-600 hover:text-red-800 text-sm"
                                                 onclick="return confirm('Rimuovere questo presidio dall\'intervento?')">
@@ -335,6 +340,66 @@
                                             </button>
                                         </td>
                                     </tr>
+                                    @if(($editMode[$pi->id] ?? false))
+                                        @php $catEdit = $pi->presidio->categoria ?? 'Estintore'; @endphp
+                                        <tr class="bg-gray-50">
+                                            <td colspan="9" class="p-3">
+                                                <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                                                    <div>
+                                                        <label class="text-xs text-gray-600">Progressivo</label>
+                                                        <input type="text" wire:model.defer="editPresidio.{{ $pi->id }}.progressivo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                    </div>
+                                                    <div class="md:col-span-2">
+                                                        <label class="text-xs text-gray-600">Ubicazione</label>
+                                                        <input type="text" wire:model.defer="editPresidio.{{ $pi->id }}.ubicazione" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                    </div>
+                                                    @if($catEdit === 'Estintore')
+                                                        <div>
+                                                            <label class="text-xs text-gray-600">Tipo Estintore</label>
+                                                            <select wire:model.defer="editPresidio.{{ $pi->id }}.tipo_estintore_id" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                                <option value="">Seleziona tipo</option>
+                                                                @foreach($tipiEstintori as $tipo)
+                                                                    <option value="{{ $tipo->id }}">{{ $tipo->sigla }} – {{ $tipo->descrizione }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label class="text-xs text-gray-600">Data Serbatoio</label>
+                                                            <input type="date" wire:model.defer="editPresidio.{{ $pi->id }}.data_serbatoio" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                        </div>
+                                                        <div>
+                                                            <label class="text-xs text-gray-600">Ultima Revisione</label>
+                                                            <input type="date" wire:model.defer="editPresidio.{{ $pi->id }}.data_ultima_revisione" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                        </div>
+                                                    @elseif($catEdit === 'Idrante')
+                                                        <div>
+                                                            <label class="text-xs text-gray-600">Tipo Idrante</label>
+                                                            <select wire:model.defer="editPresidio.{{ $pi->id }}.idrante_tipo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                                <option value="">Seleziona tipo</option>
+                                                                @foreach($tipiIdranti as $tipo)
+                                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                    @elseif($catEdit === 'Porta')
+                                                        <div>
+                                                            <label class="text-xs text-gray-600">Tipo Porta</label>
+                                                            <select wire:model.defer="editPresidio.{{ $pi->id }}.porta_tipo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                                <option value="">Seleziona tipo</option>
+                                                                @foreach($tipiPorte as $tipo)
+                                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                <div class="mt-3 flex items-center gap-2">
+                                                    <button wire:click="salvaModificaPresidio({{ $pi->id }})" class="px-3 py-1 text-sm rounded bg-green-600 text-white">Salva</button>
+                                                    <button wire:click="toggleEditPresidio({{ $pi->id }})" class="px-3 py-1 text-sm rounded border">Annulla</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endif
                                 @endforeach
                             </tbody>
                         </table>
@@ -420,7 +485,7 @@
 
                     <div>
                         <label class="text-sm">Esito</label>
-                        <select wire:model="input.{{ $pi->id }}.esito" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                        <select wire:model="input.{{ $pi->id }}.esito" wire:change="salvaEsito({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1">
                             <option value="verificato">✅ Verificato</option>
                             <option value="non_verificato">❌ Non Verificato</option>
                             <option value="anomalie">⚠️ Anomalie</option>
@@ -536,6 +601,67 @@
                             @endif
                         @endif
                     </div>
+                    <div class="mt-3">
+                        <button wire:click="toggleEditPresidio({{ $pi->id }})" class="text-xs px-2 py-1 rounded border">
+                            ✏️ Modifica dati presidio
+                        </button>
+                    </div>
+                    @if(($editMode[$pi->id] ?? false))
+                        @php $catEdit = $pi->presidio->categoria ?? 'Estintore'; @endphp
+                        <div class="mt-3 p-3 border rounded bg-gray-50 space-y-2">
+                            <div>
+                                <label class="text-xs text-gray-600">Progressivo</label>
+                                <input type="text" wire:model.defer="editPresidio.{{ $pi->id }}.progressivo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-600">Ubicazione</label>
+                                <input type="text" wire:model.defer="editPresidio.{{ $pi->id }}.ubicazione" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                            </div>
+                            @if($catEdit === 'Estintore')
+                                <div>
+                                    <label class="text-xs text-gray-600">Tipo Estintore</label>
+                                    <select wire:model.defer="editPresidio.{{ $pi->id }}.tipo_estintore_id" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                        <option value="">Seleziona tipo</option>
+                                        @foreach($tipiEstintori as $tipo)
+                                            <option value="{{ $tipo->id }}">{{ $tipo->sigla }} – {{ $tipo->descrizione }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-600">Data Serbatoio</label>
+                                    <input type="date" wire:model.defer="editPresidio.{{ $pi->id }}.data_serbatoio" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-600">Ultima Revisione</label>
+                                    <input type="date" wire:model.defer="editPresidio.{{ $pi->id }}.data_ultima_revisione" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                </div>
+                            @elseif($catEdit === 'Idrante')
+                                <div>
+                                    <label class="text-xs text-gray-600">Tipo Idrante</label>
+                                    <select wire:model.defer="editPresidio.{{ $pi->id }}.idrante_tipo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                        <option value="">Seleziona tipo</option>
+                                        @foreach($tipiIdranti as $tipo)
+                                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @elseif($catEdit === 'Porta')
+                                <div>
+                                    <label class="text-xs text-gray-600">Tipo Porta</label>
+                                    <select wire:model.defer="editPresidio.{{ $pi->id }}.porta_tipo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                        <option value="">Seleziona tipo</option>
+                                        @foreach($tipiPorte as $tipo)
+                                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                            <div class="flex items-center gap-2">
+                                <button wire:click="salvaModificaPresidio({{ $pi->id }})" class="px-3 py-1 text-sm rounded bg-green-600 text-white">Salva</button>
+                                <button wire:click="toggleEditPresidio({{ $pi->id }})" class="px-3 py-1 text-sm rounded border">Annulla</button>
+                            </div>
+                        </div>
+                    @endif
                 </div>
                 <div class="mt-4 text-end">
                     <button wire:click="rimuoviPresidioIntervento({{ $pi->id }})"
