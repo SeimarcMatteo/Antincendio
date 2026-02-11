@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\Presidio;
 use App\Models\Sede;
 use App\Models\TipoEstintore;
+use App\Models\TipoPresidio;
 use App\Livewire\Presidi\ImportaPresidi;
 use App\Services\Presidi\ProgressivoParser;
 use Illuminate\Support\Carbon;
@@ -126,6 +127,13 @@ class DocxPresidiImporter
                         $flag2 = !empty($r['anomalia_lancia'] ?? null);
                         $flag3 = !empty($r['anomalia_lastra'] ?? null);
 
+                        if ($idrTipo) {
+                            TipoPresidio::firstOrCreate([
+                                'categoria' => 'Idrante',
+                                'nome' => mb_strtoupper(trim((string) $idrTipo)),
+                            ]);
+                        }
+
                         $sedeId = $this->resolveSedeId();
                         Presidio::updateOrCreate(
                             [
@@ -163,6 +171,13 @@ class DocxPresidiImporter
                         $flag2 = !empty($r['anomalia_molla'] ?? null);
                         $flag3 = !empty($r['anomalia_numerazione'] ?? null);
                         $contratto = $r['tipo_contratto'] ?? $contratto;
+
+                        if ($portaTipo) {
+                            TipoPresidio::firstOrCreate([
+                                'categoria' => 'Porta',
+                                'nome' => mb_strtoupper(trim((string) $portaTipo)),
+                            ]);
+                        }
 
                         $sedeId = $this->resolveSedeId();
                         Presidio::updateOrCreate(

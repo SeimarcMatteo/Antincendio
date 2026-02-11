@@ -5,6 +5,7 @@ use App\Models\Presidio;
 use App\Models\Cliente;
 use App\Models\Sede;
 use App\Models\TipoEstintore;
+use App\Models\TipoPresidio;
 use Livewire\Component;
 use Illuminate\Support\Facades\Log;
 
@@ -29,6 +30,11 @@ class GestionePresidi extends Component
     public ?string $dataUltimaRevisione = null;
     public $flagPreventivo = false;
     public $descrizione;
+    public $idranteTipo;
+    public $idranteLunghezza;
+    public bool $idranteSopraSuolo = false;
+    public bool $idranteSottoSuolo = false;
+    public $portaTipo;
 
     public Cliente $cliente;
     public $sede;
@@ -48,6 +54,8 @@ class GestionePresidi extends Component
         'tipoContratto' => 'required|string|max:255',
         'categoria' => 'required|in:Estintore,Idrante,Porta',
         'tipoEstintore' => 'required_if:categoria,Estintore|exists:tipi_estintori,id',
+        'idranteTipo' => 'required_if:categoria,Idrante',
+        'portaTipo' => 'required_if:categoria,Porta',
         'anomalia1' => 'nullable|boolean',
         'anomalia2' => 'nullable|boolean',
         'anomalia3' => 'nullable|boolean',
@@ -57,6 +65,9 @@ class GestionePresidi extends Component
         'dataUltimaRevisione' => 'nullable|date',
         'flagPreventivo' => 'nullable|boolean',
         'descrizione' => 'nullable|string|max:255',
+        'idranteLunghezza' => 'nullable|string|max:50',
+        'idranteSopraSuolo' => 'nullable|boolean',
+        'idranteSottoSuolo' => 'nullable|boolean',
         'isAcquisto'        => 'boolean',
         'dataAcquisto'      => 'nullable|date|required_if:isAcquisto,true',
         'scadenzaPresidio'  => 'nullable|date', // calcolata: la teniamo "nullable" per sicurezza
@@ -261,22 +272,11 @@ public function ricalcolaDate(int $id): void
         $this->validate();
         Log::info('Validazione Completata' );
         $progressivo = Presidio::prossimoProgressivo($this->clienteId, $this->sedeId, $this->categoria);
-
-        $data = [
-            'cliente_id' => $this->clienteId,
-            'sede_id' => $this->sedeId,
-            'categoria' => $this->categoria,
-            'progressivo' => $progressivo,
-            'ubicazione' => $this->ubicazione,
-            'tipo_contratto' => $this->tipoContratto,
-            'flag_anomalia1' => $this->anomalia1,
-            'flag_anomalia2' => $this->anomalia2,
-            'flag_anomalia3' => $this->anomalia3,
-            'note' => $this->note,
-        ];
+        $tipo = null;
+        $categoria = $this->categoria;
         
         // Dati specifici per ESTINTORE
-        if ($this->categoria === 'Estintore') {
+        if ($categoria === 'Estintore') {
             Log::info('Categoria Estintore.');
             $tipo = TipoEstintore::find($this->tipoEstintore);
         
@@ -297,35 +297,43 @@ public function ricalcolaDate(int $id): void
             $date = Presidio::calcolaDateEstintore($this->dataSerbatoio, $classificazioneId);
             Log::info('Date calcolate', $date);
         }
-       
-        
-        // Dati specifici per IDRANTE
-        if ($this->categoria === 'Idrante') {
-            $data['descrizione'] = $this->descrizione;
+
+        if ($categoria === 'Idrante' && !empty($this->idranteTipo)) {
+            TipoPresidio::firstOrCreate([
+                'categoria' => 'Idrante',
+                'nome' => mb_strtoupper(trim((string) $this->idranteTipo)),
+            ]);
         }
 
-        // Dati specifici per PORTA
-        if ($this->categoria === 'Porta') {
-            $data['descrizione'] = $this->descrizione;
+        if ($categoria === 'Porta' && !empty($this->portaTipo)) {
+            TipoPresidio::firstOrCreate([
+                'categoria' => 'Porta',
+                'nome' => mb_strtoupper(trim((string) $this->portaTipo)),
+            ]);
         }
 
         $presidio = new Presidio([
             'cliente_id' => $this->clienteId,
             'sede_id' => $this->sedeId,
-            'categoria' => $this->categoria,
+            'categoria' => $categoria,
             'progressivo' => $progressivo,
             'ubicazione' => $this->ubicazione,
             'tipo_contratto' => $this->tipoContratto,
-            'tipo_estintore_id' => $tipo->id,
+            'tipo_estintore_id' => $categoria === 'Estintore' ? $tipo?->id : null,
             'flag_anomalia1' => $this->anomalia1,
             'flag_anomalia2' => $this->anomalia2,
             'flag_anomalia3' => $this->anomalia3,
             'note' => $this->note,
-            'data_serbatoio' => $this->dataSerbatoio,
-            'marca_serbatoio' => $this->marcaSerbatoio,
-            'data_ultima_revisione' => $this->dataUltimaRevisione,
+            'data_serbatoio' => $categoria === 'Estintore' ? $this->dataSerbatoio : null,
+            'marca_serbatoio' => $categoria === 'Estintore' ? $this->marcaSerbatoio : null,
+            'data_ultima_revisione' => $categoria === 'Estintore' ? $this->dataUltimaRevisione : null,
             'flag_preventivo' => $this->flagPreventivo,
             'descrizione' => $this->descrizione,
+            'idrante_tipo' => $categoria === 'Idrante' ? mb_strtoupper(trim((string) $this->idranteTipo)) : null,
+            'idrante_lunghezza' => $categoria === 'Idrante' ? $this->idranteLunghezza : null,
+            'idrante_sopra_suolo' => $categoria === 'Idrante' ? (bool) $this->idranteSopraSuolo : false,
+            'idrante_sotto_suolo' => $categoria === 'Idrante' ? (bool) $this->idranteSottoSuolo : false,
+            'porta_tipo' => $categoria === 'Porta' ? mb_strtoupper(trim((string) $this->portaTipo)) : null,
                // NUOVI CAMPI (valorizzali solo se isAcquisto)
         'data_acquisto'     => $this->isAcquisto ? $this->dataAcquisto : null,
         'scadenza_presidio' => $this->isAcquisto ? $this->scadenzaPresidio : null,
@@ -345,6 +353,7 @@ public function ricalcolaDate(int $id): void
             'ubicazione','tipoContratto','tipoEstintore','dataSerbatoio','marcaSerbatoio','flagPreventivo',
             'anomalia1','anomalia2','anomalia3','note','descrizione',
             'isAcquisto','dataAcquisto','scadenzaPresidio','dataUltimaRevisione',
+            'idranteTipo','idranteLunghezza','idranteSopraSuolo','idranteSottoSuolo','portaTipo',
         ]);
         Log::info('Fine del metodo salvaPresidio');
     }
@@ -425,6 +434,8 @@ public function ricalcolaDate(int $id): void
     $clienti = Cliente::all();
     $sedi = Sede::where('cliente_id',$this->clienteId)->get();
     $tipiEstintori = TipoEstintore::orderBy('sigla')->get();
+    $tipiIdranti = TipoPresidio::where('categoria', 'Idrante')->orderBy('nome')->pluck('nome')->all();
+    $tipiPorte = TipoPresidio::where('categoria', 'Porta')->orderBy('nome')->pluck('nome')->all();
   
     
 
@@ -433,6 +444,8 @@ public function ricalcolaDate(int $id): void
         'clienti' => $clienti,
         'sedi' => $sedi,
         'tipiEstintori' => $tipiEstintori,
+        'tipiIdranti' => $tipiIdranti,
+        'tipiPorte' => $tipiPorte,
     ])->layout('layouts.app');
 }
 }

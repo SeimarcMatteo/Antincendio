@@ -11,6 +11,7 @@ use PhpOffice\PhpWord\Element\TextRun;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
 use App\Models\{TipoEstintore, ImportPresidio, Presidio};
+use App\Models\TipoPresidio;
 use App\Services\Presidi\ProgressivoParser;
 
 class ImportaPresidi extends Component
@@ -836,6 +837,19 @@ public function ricalcola(string $scope, int $index): void
         }
 
         foreach ($import as $p) {
+            if ($p->categoria === 'Idrante' && !empty($p->idrante_tipo)) {
+                TipoPresidio::firstOrCreate([
+                    'categoria' => 'Idrante',
+                    'nome' => mb_strtoupper(trim((string) $p->idrante_tipo)),
+                ]);
+            }
+            if ($p->categoria === 'Porta' && !empty($p->porta_tipo)) {
+                TipoPresidio::firstOrCreate([
+                    'categoria' => 'Porta',
+                    'nome' => mb_strtoupper(trim((string) $p->porta_tipo)),
+                ]);
+            }
+
             Presidio::updateOrCreate(
                 [
                     'cliente_id' => $p->cliente_id,

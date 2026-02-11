@@ -96,6 +96,9 @@ public function salvaNuovoPresidio()
     $marcaSerbatoio = $categoria === 'Estintore' ? $this->normalizeMarca($this->nuovoPresidio['marca_serbatoio'] ?? null) : null;
     $dataUltimaRev = $categoria === 'Estintore' ? ($this->nuovoPresidio['data_ultima_revisione'] ?? null) : null;
 
+    $idranteTipo = $categoria === 'Idrante' ? mb_strtoupper(trim((string) ($this->nuovoPresidio['idrante_tipo'] ?? ''))) : null;
+    $portaTipo = $categoria === 'Porta' ? mb_strtoupper(trim((string) ($this->nuovoPresidio['porta_tipo'] ?? ''))) : null;
+
     $presidio = Presidio::create([
         'cliente_id' => $clienteId,
         'sede_id' => $sedeId,
@@ -106,11 +109,11 @@ public function salvaNuovoPresidio()
         'data_serbatoio' => $dataSerbatoio,
         'marca_serbatoio' => $marcaSerbatoio,
         'data_ultima_revisione' => $dataUltimaRev,
-        'idrante_tipo' => $categoria === 'Idrante' ? ($this->nuovoPresidio['idrante_tipo'] ?? null) : null,
+        'idrante_tipo' => $idranteTipo ?: null,
         'idrante_lunghezza' => $this->nuovoPresidio['idrante_lunghezza'] ?? null,
         'idrante_sopra_suolo' => $this->nuovoPresidio['idrante_sopra_suolo'] ?? false,
         'idrante_sotto_suolo' => $this->nuovoPresidio['idrante_sotto_suolo'] ?? false,
-        'porta_tipo' => $categoria === 'Porta' ? ($this->nuovoPresidio['porta_tipo'] ?? null) : null,
+        'porta_tipo' => $portaTipo ?: null,
         'note' => $this->nuovoPresidio['note'],
     ]);
 
@@ -419,11 +422,11 @@ public function salvaNuovoPresidio()
             'data_serbatoio' => $cat === 'Estintore' ? ($dati['nuova_data_serbatoio'] ?? null) : null,
             'marca_serbatoio' => $cat === 'Estintore' ? $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio) : null,
             'data_ultima_revisione' => $cat === 'Estintore' ? ($dati['nuova_data_ultima_revisione'] ?? null) : null,
-            'idrante_tipo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_tipo'] ?? $vecchio->idrante_tipo) : null,
+            'idrante_tipo' => $cat === 'Idrante' ? $this->normalizeTipoPresidio($dati['nuovo_idrante_tipo'] ?? $vecchio->idrante_tipo) : null,
             'idrante_lunghezza' => $cat === 'Idrante' ? ($dati['nuovo_idrante_lunghezza'] ?? $vecchio->idrante_lunghezza) : null,
             'idrante_sopra_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sopra_suolo'] ?? $vecchio->idrante_sopra_suolo) : false,
             'idrante_sotto_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sotto_suolo'] ?? $vecchio->idrante_sotto_suolo) : false,
-            'porta_tipo' => $cat === 'Porta' ? ($dati['nuovo_porta_tipo'] ?? $vecchio->porta_tipo) : null,
+            'porta_tipo' => $cat === 'Porta' ? $this->normalizeTipoPresidio($dati['nuovo_porta_tipo'] ?? $vecchio->porta_tipo) : null,
             'mesi_visita' => $vecchio->mesi_visita,
         ]);
 
@@ -503,11 +506,11 @@ public function salvaNuovoPresidio()
                 'data_serbatoio' => $cat === 'Estintore' ? ($dati['nuova_data_serbatoio'] ?? null) : null,
                 'marca_serbatoio' => $cat === 'Estintore' ? $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio) : null,
                 'data_ultima_revisione' => $cat === 'Estintore' ? ($dati['nuova_data_ultima_revisione'] ?? null) : null,
-                'idrante_tipo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_tipo'] ?? $vecchio->idrante_tipo) : null,
+                'idrante_tipo' => $cat === 'Idrante' ? $this->normalizeTipoPresidio($dati['nuovo_idrante_tipo'] ?? $vecchio->idrante_tipo) : null,
                 'idrante_lunghezza' => $cat === 'Idrante' ? ($dati['nuovo_idrante_lunghezza'] ?? $vecchio->idrante_lunghezza) : null,
                 'idrante_sopra_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sopra_suolo'] ?? $vecchio->idrante_sopra_suolo) : false,
                 'idrante_sotto_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sotto_suolo'] ?? $vecchio->idrante_sotto_suolo) : false,
-                'porta_tipo' => $cat === 'Porta' ? ($dati['nuovo_porta_tipo'] ?? $vecchio->porta_tipo) : null,
+                'porta_tipo' => $cat === 'Porta' ? $this->normalizeTipoPresidio($dati['nuovo_porta_tipo'] ?? $vecchio->porta_tipo) : null,
                 'mesi_visita' => $vecchio->mesi_visita,
             ]);
 
@@ -628,6 +631,12 @@ public function salvaNuovoPresidio()
     {
         $marca = trim((string) $marca);
         return $marca === '' ? null : mb_strtoupper($marca);
+    }
+
+    private function normalizeTipoPresidio(?string $val): ?string
+    {
+        $val = trim((string) $val);
+        return $val === '' ? null : mb_strtoupper($val);
     }
 
 

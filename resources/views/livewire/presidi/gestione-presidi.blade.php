@@ -366,9 +366,9 @@
                                             <select wire:model.defer="presidiData.{{ $presidio->id }}.idrante_tipo"
                                                     class="form-select text-xs">
                                                 <option value="">-- tipo --</option>
-                                                <option value="45">45</option>
-                                                <option value="70">70</option>
-                                                <option value="NASPO">NASPO</option>
+                                                @foreach($tipiIdranti as $tipo)
+                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                @endforeach
                                             </select>
                                             <input type="text"
                                                    wire:model.defer="presidiData.{{ $presidio->id }}.idrante_lunghezza"
@@ -386,10 +386,13 @@
                                             </label>
                                         </div>
                                     @else
-                                        <input type="text"
-                                               wire:model.defer="presidiData.{{ $presidio->id }}.porta_tipo"
-                                               class="form-input w-full text-xs"
-                                               placeholder="es. U.E. 2 ANTE">
+                                        <select wire:model.defer="presidiData.{{ $presidio->id }}.porta_tipo"
+                                                class="form-select text-xs w-full">
+                                            <option value="">-- tipo porta --</option>
+                                            @foreach($tipiPorte as $tipo)
+                                                <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                            @endforeach
+                                        </select>
                                     @endif
                                 @else
                                     @if($presidio->categoria === 'Idrante')
@@ -582,11 +585,48 @@
         @endif
 
         {{-- IDRANTE / PORTA --}}
-        @if (in_array($categoria, ['Idrante','Porta'], true))
+        @if ($categoria === 'Idrante')
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Descrizione</label>
-                    <input type="text" wire:model="descrizione" class="mt-1 w-full rounded border-gray-300 shadow-sm">
+                    <label class="block text-sm font-medium text-gray-700">Tipo Idrante</label>
+                    <select wire:model="idranteTipo" class="mt-1 w-full rounded border-gray-300 shadow-sm">
+                        <option value="">Seleziona tipo</option>
+                        @foreach($tipiIdranti as $tipo)
+                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @endforeach
+                    </select>
+                    @error('idranteTipo') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Lunghezza</label>
+                    <input type="text" wire:model="idranteLunghezza" class="mt-1 w-full rounded border-gray-300 shadow-sm" placeholder="es. 20 Mt">
+                </div>
+                <div class="flex items-center gap-4">
+                    <label class="inline-flex items-center gap-2 mt-2">
+                        <input type="checkbox" wire:model="idranteSopraSuolo" class="rounded border-gray-300">
+                        <span class="text-sm text-gray-700">Sopra suolo</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 mt-2">
+                        <input type="checkbox" wire:model="idranteSottoSuolo" class="rounded border-gray-300">
+                        <span class="text-sm text-gray-700">Sotto suolo</span>
+                    </label>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Note</label>
+                <textarea wire:model="note" class="mt-1 w-full rounded border-gray-300 shadow-sm"></textarea>
+            </div>
+        @elseif($categoria === 'Porta')
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tipo Porta</label>
+                    <select wire:model="portaTipo" class="mt-1 w-full rounded border-gray-300 shadow-sm">
+                        <option value="">Seleziona tipo</option>
+                        @foreach($tipiPorte as $tipo)
+                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @endforeach
+                    </select>
+                    @error('portaTipo') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
             </div>
             <div>
