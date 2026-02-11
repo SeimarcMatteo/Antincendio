@@ -198,7 +198,14 @@
                 <div class="border rounded shadow-sm bg-white">
                     <div class="flex items-center justify-between px-3 py-2 border-l-4 {{ $style['border'] }} {{ $style['bg'] }}">
                         <div class="font-semibold text-sm">{{ $style['label'] }}</div>
-                        <div class="text-xs text-gray-600">Totale: {{ $items->count() }}</div>
+                        <div class="flex flex-col items-end gap-1">
+                            <div class="text-xs text-gray-600">Totale: {{ $items->count() }}</div>
+                            @if($cat === 'Idrante' && $showControlloAnnualeIdranti)
+                                <span class="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-orange-500 text-white shadow-sm">
+                                    CONTROLLO ANNUALE
+                                </span>
+                            @endif
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm text-gray-800">
@@ -288,9 +295,6 @@
                                                                                class="h-5 w-5 border-gray-300">
                                                                         <span>Riparata</span>
                                                                     </label>
-                                                                    @if(!$rip)
-                                                                        <span class="text-amber-700 text-[11px]">Preventivo</span>
-                                                                    @endif
                                                                 </div>
                                                             @endforeach
                                                         </div>
@@ -378,11 +382,6 @@
                                                     <span><strong>Tipo Estintore:</strong> {{ $pi->presidio->tipoEstintore?->sigla }} – {{ $pi->presidio->tipoEstintore?->descrizione }}</span>
                                                 @elseif($cat === 'Idrante')
                                                     <span><strong>Tipo Idrante:</strong> {{ $pi->presidio->idranteTipoRef?->nome ?? $pi->presidio->idrante_tipo ?? '—' }}</span>
-                                                    @if($showControlloAnnualeIdranti)
-                                                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-orange-100 text-orange-700">
-                                                            CONTROLLO ANNUALE
-                                                        </span>
-                                                    @endif
                                                 @elseif($cat === 'Porta')
                                                     <span><strong>Tipo Porta:</strong> {{ $pi->presidio->portaTipoRef?->nome ?? $pi->presidio->porta_tipo ?? '—' }}</span>
                                                 @else
@@ -520,7 +519,14 @@
                     <i class="fa {{ $catIcon }} text-gray-500 mr-1"></i>
                     Presidio #{{ $pi->presidio->progressivo }}
                 </h3>
-                <span class="text-xs px-2 py-0.5 rounded {{ $catBadge }}">{{ strtoupper($cat) }}</span>
+                <div class="flex flex-col items-end gap-1">
+                    <span class="text-xs px-2 py-0.5 rounded {{ $catBadge }}">{{ strtoupper($cat) }}</span>
+                    @if($cat === 'Idrante' && $showControlloAnnualeIdranti)
+                        <span class="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-orange-500 text-white shadow-sm">
+                            CONTROLLO ANNUALE
+                        </span>
+                    @endif
+                </div>
             </div>
 
                 <div class="space-y-2">
@@ -540,11 +546,6 @@
                             <strong>Tipo Estintore:</strong> {{ $pi->presidio->tipoEstintore?->sigla }} – {{ $pi->presidio->tipoEstintore?->descrizione }}
                         @elseif($cat === 'Idrante')
                             <strong>Tipo Idrante:</strong> {{ $pi->presidio->idranteTipoRef?->nome ?? $pi->presidio->idrante_tipo ?? '—' }}
-                            @if($showControlloAnnualeIdranti)
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-orange-100 text-orange-700">
-                                    CONTROLLO ANNUALE
-                                </span>
-                            @endif
                         @elseif($cat === 'Porta')
                             <strong>Tipo Porta:</strong> {{ $pi->presidio->portaTipoRef?->nome ?? $pi->presidio->porta_tipo ?? '—' }}
                         @else
@@ -610,9 +611,6 @@
                                                                class="h-5 w-5 border-gray-300">
                                                         <span class="text-xs">Riparata</span>
                                                     </label>
-                                                    @if(!$rip)
-                                                        <span class="text-amber-700 text-xs">Preventivo</span>
-                                                    @endif
                                                 </div>
                                             </div>
                                         @endforeach
