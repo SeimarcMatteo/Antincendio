@@ -9,7 +9,7 @@ class TipoEstintore extends Model
 {
     protected $table = 'tipi_estintori';
 
-    protected $fillable = ['sigla', 'descrizione', 'kg', 'tipo', 'colore_id'];
+    protected $fillable = ['sigla', 'codice_articolo_fatturazione', 'descrizione', 'kg', 'tipo', 'colore_id'];
 
     public function presidi()
     {

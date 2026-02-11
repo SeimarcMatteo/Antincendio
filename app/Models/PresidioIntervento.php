@@ -6,6 +6,7 @@ use App\Models\Anomalia;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 class PresidioIntervento extends Model
 {
@@ -54,22 +55,24 @@ class PresidioIntervento extends Model
 
     public function getAnomalieIdsAttribute(): array
     {
-        if ($this->relationLoaded('anomalieItems') && $this->anomalieItems->isNotEmpty()) {
-            return $this->anomalieItems
-                ->pluck('anomalia_id')
-                ->filter()
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
-        }
+        if (Schema::hasTable('presidio_intervento_anomalie')) {
+            if ($this->relationLoaded('anomalieItems') && $this->anomalieItems->isNotEmpty()) {
+                return $this->anomalieItems
+                    ->pluck('anomalia_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->values()
+                    ->all();
+            }
 
-        if ($this->anomalieItems()->exists()) {
-            return $this->anomalieItems()
-                ->pluck('anomalia_id')
-                ->filter()
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
+            if ($this->anomalieItems()->exists()) {
+                return $this->anomalieItems()
+                    ->pluck('anomalia_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->values()
+                    ->all();
+            }
         }
 
         $decoded = is_array($this->attributes['anomalie'] ?? null)

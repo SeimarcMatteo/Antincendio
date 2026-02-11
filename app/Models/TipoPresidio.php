@@ -11,5 +11,6 @@ class TipoPresidio extends Model
     protected $fillable = [
         'categoria',
         'nome',
+        'codice_articolo_fatturazione',
     ];
 }

@@ -65,20 +65,10 @@
         @endunless
     </div>
 
-    {{-- Fatturazione (solo Amministrazione) --}}
+    {{-- Fatturazione gestita esternamente --}}
     @if ($isAmministrazione)
-        <div class="bg-white p-4 rounded-lg shadow border">
-            <h2 class="font-bold text-lg mb-3">Fatturazione</h2>
-            <div class="flex flex-wrap gap-3">
-                <a href="{{ route('fatturazione.da_fatturare') }}"
-                   class="inline-flex items-center px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow">
-                    📄 Interventi da fatturare (mese)
-                </a>
-                <a href="{{ route('fatturazione.genera') }}"
-                   class="inline-flex items-center px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 shadow">
-                    🧾 Genera fattura (singolo cliente)
-                </a>
-            </div>
+        <div class="bg-blue-50 p-4 rounded-lg shadow border border-blue-200 text-blue-800">
+            La fatturazione viene gestita su Business esterno. Qui trovi solo il confronto ordine/intervento in fase di evasione.
         </div>
     @endif
 

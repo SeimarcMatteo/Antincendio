@@ -11,7 +11,9 @@ use App\Models\Anomalia;
 use App\Models\TipoEstintore;
 use App\Models\InterventoTecnico;
 use App\Models\TipoPresidio;
+use App\Services\Interventi\OrdinePreventivoService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 use Livewire\Attributes\On;
 
@@ -38,6 +40,12 @@ class EvadiInterventoSingolo extends Component
     public array $editMode = [];
     public array $editPresidio = [];
     public bool $showControlloAnnualeIdranti = false;
+    public array $ordinePreventivo = [
+        'found' => false,
+        'error' => null,
+        'header' => null,
+        'rows' => [],
+    ];
 
     #[On('firmaClienteAcquisita')]
     public function salvaFirmaCliente($data)
@@ -47,6 +55,21 @@ class EvadiInterventoSingolo extends Component
         ]);
 
         $this->messaggioSuccesso = "Firma salvata con successo.";
+    }
+
+    private function interventoRelations(): array
+    {
+        $rels = [
+            'presidiIntervento.presidio.tipoEstintore.colore',
+            'presidiIntervento.presidio.idranteTipoRef',
+            'presidiIntervento.presidio.portaTipoRef',
+        ];
+
+        if (Schema::hasTable('presidio_intervento_anomalie')) {
+            $rels[] = 'presidiIntervento.anomalieItems.anomalia';
+        }
+
+        return $rels;
     }
 
     
@@ -178,12 +201,7 @@ public function salvaNuovoPresidio()
     ]);
 
     // Ricarico l'intervento completo con il nuovo legame
-    $this->intervento->load(
-        'presidiIntervento.presidio.tipoEstintore.colore',
-        'presidiIntervento.presidio.idranteTipoRef',
-        'presidiIntervento.presidio.portaTipoRef',
-        'presidiIntervento.anomalieItems.anomalia'
-    );
+    $this->intervento->load(...$this->interventoRelations());
     
     // Inizializzazione sicura input
         $this->input[$pi->id] = [
@@ -221,10 +239,7 @@ public function salvaNuovoPresidio()
             'cliente',
             'sede',
             'tecnici',
-            'presidiIntervento.presidio.tipoEstintore.colore',
-            'presidiIntervento.presidio.idranteTipoRef',
-            'presidiIntervento.presidio.portaTipoRef',
-            'presidiIntervento.anomalieItems.anomalia'
+            ...$this->interventoRelations()
         );
         $this->durataEffettiva = $this->intervento->durata_effettiva;
         $this->showControlloAnnualeIdranti = $this->isMeseMinutaggioPiuAlto();
@@ -257,12 +272,7 @@ public function salvaNuovoPresidio()
             }
     
             // Reload dopo la creazione
-            $this->intervento->load(
-                'presidiIntervento.presidio.tipoEstintore.colore',
-                'presidiIntervento.presidio.idranteTipoRef',
-                'presidiIntervento.presidio.portaTipoRef',
-                'presidiIntervento.anomalieItems.anomalia'
-            );
+            $this->intervento->load(...$this->interventoRelations());
         }
     
         // Inizializzazione input per ogni presidio_intervento
@@ -295,6 +305,8 @@ public function salvaNuovoPresidio()
                 'deve_ritirare' => $deveEssereRitirato,
             ];
         }
+
+        $this->caricaOrdinePreventivo();
     }
 
     public function avviaIntervento(): void
@@ -410,12 +422,7 @@ public function salvaNuovoPresidio()
 
         $this->editMode[$piId] = false;
         $this->messaggioSuccesso = 'Presidio aggiornato.';
-        $this->intervento->load(
-            'presidiIntervento.presidio.tipoEstintore.colore',
-            'presidiIntervento.presidio.idranteTipoRef',
-            'presidiIntervento.presidio.portaTipoRef',
-            'presidiIntervento.anomalieItems.anomalia'
-        );
+        $this->intervento->load(...$this->interventoRelations());
 
         if (isset($this->input[$piId])) {
             $this->input[$piId]['ubicazione'] = $p->ubicazione;
@@ -537,12 +544,7 @@ public function salvaNuovoPresidio()
         $pi->delete();
     
         $this->messaggioSuccesso = 'Presidio rimosso dall’intervento.';
-    $this->intervento->load(
-        'presidiIntervento.presidio.tipoEstintore.colore',
-        'presidiIntervento.presidio.idranteTipoRef',
-        'presidiIntervento.presidio.portaTipoRef',
-        'presidiIntervento.anomalieItems.anomalia'
-    );
+    $this->intervento->load(...$this->interventoRelations());
     }
     public function getAnomalieProperty()
     {
@@ -571,8 +573,13 @@ public function salvaNuovoPresidio()
             InterventoTecnico::where('intervento_id', $this->intervento->id)
                 ->whereNull('ended_at')
                 ->update(['ended_at' => now()]);
-            $this->messaggioSuccesso ='Intervento evaso correttamente!';
-            return redirect()->route('interventi.evadi');
+            $this->messaggioSuccesso ='Intervento evaso correttamente. Apertura rapportino in corso...';
+            $this->dispatch(
+                'intervento-completato',
+                pdfUrl: route('rapportino.pdf', $this->intervento->id),
+                redirectUrl: route('interventi.evadi')
+            );
+            return;
         } else {
             // Mostra un messaggio di errore se non tutti i presidi sono verificati
             $this->messaggioErrore ='Devi verificare tutti i presidi prima di completare l\'intervento.';
@@ -918,25 +925,74 @@ public function salvaNuovoPresidio()
         return array_slice($out, 0, 2);
     }
 
+    public function ricaricaOrdinePreventivo(): void
+    {
+        $this->caricaOrdinePreventivo();
+        if ($this->ordinePreventivo['found']) {
+            $this->messaggioSuccesso = 'Ordine preventivo aggiornato da Business.';
+        } else {
+            $this->messaggioErrore = $this->ordinePreventivo['error'] ?? 'Ordine preventivo non trovato.';
+        }
+    }
+
+    public function getRiepilogoOrdineProperty(): array
+    {
+        $svc = $this->ordineService();
+        $righeIntervento = $svc->buildRigheIntervento($this->intervento->presidiIntervento);
+        $confronto = $svc->buildConfronto(
+            $this->ordinePreventivo['rows'] ?? [],
+            $righeIntervento['rows'] ?? []
+        );
+        $anomalie = $svc->buildAnomalieSummaryFromInput($this->input, $this->anomalyLabelMap());
+
+        return [
+            'righe_intervento' => $righeIntervento['rows'] ?? [],
+            'presidi_senza_codice' => $righeIntervento['missing_mapping'] ?? [],
+            'confronto' => $confronto,
+            'anomalie' => $anomalie,
+        ];
+    }
+
+    private function caricaOrdinePreventivo(): void
+    {
+        $codiceEsterno = (string) ($this->intervento->cliente?->codice_esterno ?? '');
+        $this->ordinePreventivo = $this->ordineService()->caricaOrdineApertoPerCliente($codiceEsterno);
+    }
+
+    private function ordineService(): OrdinePreventivoService
+    {
+        return app(OrdinePreventivoService::class);
+    }
+
+    private function anomalyLabelMap(): array
+    {
+        return collect($this->anomalie)
+            ->flatten(1)
+            ->pluck('etichetta', 'id')
+            ->toArray();
+    }
+
     private function extractAnomalieState(PresidioIntervento $pi): array
     {
-        $items = $pi->relationLoaded('anomalieItems')
-            ? $pi->anomalieItems
-            : $pi->anomalieItems()->get(['anomalia_id', 'riparata']);
+        if (Schema::hasTable('presidio_intervento_anomalie')) {
+            $items = $pi->relationLoaded('anomalieItems')
+                ? $pi->anomalieItems
+                : $pi->anomalieItems()->get(['anomalia_id', 'riparata']);
 
-        if ($items->isNotEmpty()) {
-            $ids = $items->pluck('anomalia_id')
-                ->filter(fn ($id) => is_numeric($id))
-                ->map(fn ($id) => (int) $id)
-                ->unique()
-                ->values()
-                ->all();
+            if ($items->isNotEmpty()) {
+                $ids = $items->pluck('anomalia_id')
+                    ->filter(fn ($id) => is_numeric($id))
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
 
-            $riparate = $items->mapWithKeys(function ($row) {
-                return [(int) $row->anomalia_id => (bool) $row->riparata];
-            })->all();
+                $riparate = $items->mapWithKeys(function ($row) {
+                    return [(int) $row->anomalia_id => (bool) $row->riparata];
+                })->all();
 
-            return [$ids, $riparate];
+                return [$ids, $riparate];
+            }
         }
 
         $ids = $this->normalizeAnomalieIds($pi->getRawOriginal('anomalie'));
@@ -992,18 +1048,20 @@ public function salvaNuovoPresidio()
         $selectedIds = $this->normalizeAnomalieIds($selectedIds);
         $riparateMap = $this->normalizeAnomalieRiparate($selectedIds, $riparateMap);
 
-        $existing = $pi->anomalieItems()->pluck('id', 'anomalia_id');
-        $toDelete = $existing->filter(fn ($id, $anomaliaId) => !in_array((int) $anomaliaId, $selectedIds, true))->values();
+        if (Schema::hasTable('presidio_intervento_anomalie')) {
+            $existing = $pi->anomalieItems()->pluck('id', 'anomalia_id');
+            $toDelete = $existing->filter(fn ($id, $anomaliaId) => !in_array((int) $anomaliaId, $selectedIds, true))->values();
 
-        if ($toDelete->isNotEmpty()) {
-            PresidioInterventoAnomalia::whereIn('id', $toDelete)->delete();
-        }
+            if ($toDelete->isNotEmpty()) {
+                PresidioInterventoAnomalia::whereIn('id', $toDelete)->delete();
+            }
 
-        foreach ($selectedIds as $anomaliaId) {
-            $pi->anomalieItems()->updateOrCreate(
-                ['anomalia_id' => $anomaliaId],
-                ['riparata' => (bool) ($riparateMap[$anomaliaId] ?? false)]
-            );
+            foreach ($selectedIds as $anomaliaId) {
+                $pi->anomalieItems()->updateOrCreate(
+                    ['anomalia_id' => $anomaliaId],
+                    ['riparata' => (bool) ($riparateMap[$anomaliaId] ?? false)]
+                );
+            }
         }
 
         $pi->anomalie = $selectedIds;
@@ -1021,6 +1079,8 @@ public function salvaNuovoPresidio()
             'interventoCompletabile' => $this->interventoCompletabile,
             'anomalie' => $this->anomalie,
             'tipiEstintori' => $this->tipiEstintori,
+            'ordinePreventivo' => $this->ordinePreventivo,
+            'riepilogoOrdine' => $this->riepilogoOrdine,
         ])->layout('layouts.app');
     }
 }

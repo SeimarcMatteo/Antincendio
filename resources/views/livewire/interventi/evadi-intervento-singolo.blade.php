@@ -763,6 +763,174 @@
     </div>
     @endif
 
+    {{-- Riepilogo Ordine Preventivo --}}
+    @php
+        $confrontoOrdine = $riepilogoOrdine['confronto'] ?? [];
+        $anomalieRiep = $riepilogoOrdine['anomalie'] ?? ['totale' => 0, 'riparate' => 0, 'preventivo' => 0, 'dettaglio' => []];
+        $senzaCodice = $riepilogoOrdine['presidi_senza_codice'] ?? [];
+    @endphp
+    <div class="bg-white border rounded p-4 shadow-sm space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <h2 class="text-lg font-semibold text-gray-800">Riepilogo Ordine Preventivo</h2>
+            <button wire:click="ricaricaOrdinePreventivo" class="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">
+                Ricarica ordine da Business
+            </button>
+        </div>
+
+        @if(!($ordinePreventivo['found'] ?? false))
+            <div class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                {{ $ordinePreventivo['error'] ?? 'Ordine preventivo non trovato.' }}
+            </div>
+        @else
+            @php $h = $ordinePreventivo['header'] ?? []; @endphp
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                <div class="rounded border border-gray-200 p-2">
+                    <div class="text-gray-500">Ordine</div>
+                    <div class="font-semibold">{{ ($h['tipork'] ?? '-') . '/' . ($h['serie'] ?? '-') . '/' . ($h['anno'] ?? '-') . '/' . ($h['numero'] ?? '-') }}</div>
+                </div>
+                <div class="rounded border border-gray-200 p-2">
+                    <div class="text-gray-500">Data</div>
+                    <div class="font-semibold">{{ !empty($h['data']) ? \Carbon\Carbon::parse($h['data'])->format('d/m/Y') : '—' }}</div>
+                </div>
+                <div class="rounded border border-gray-200 p-2">
+                    <div class="text-gray-500">Conto</div>
+                    <div class="font-semibold">{{ $h['conto'] ?? '—' }}</div>
+                </div>
+                <div class="rounded border border-gray-200 p-2">
+                    <div class="text-gray-500">Totale Documento</div>
+                    <div class="font-semibold">€ {{ number_format((float)($h['totale_documento'] ?? 0), 2, ',', '.') }}</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div>
+                    <div class="text-sm font-semibold mb-1">Righe ordine (Business)</div>
+                    <div class="overflow-auto border rounded">
+                        <table class="min-w-full text-xs">
+                            <thead class="bg-gray-100 text-gray-600">
+                                <tr>
+                                    <th class="p-2 text-left">Cod. Art.</th>
+                                    <th class="p-2 text-left">Descrizione</th>
+                                    <th class="p-2 text-right">Q.tà</th>
+                                    <th class="p-2 text-right">Prezzo</th>
+                                    <th class="p-2 text-right">Importo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse(($ordinePreventivo['rows'] ?? []) as $riga)
+                                    <tr class="border-t">
+                                        <td class="p-2 font-mono">{{ $riga['codice_articolo'] }}</td>
+                                        <td class="p-2">{{ $riga['descrizione'] ?: '—' }}</td>
+                                        <td class="p-2 text-right">{{ number_format((float)$riga['quantita'], 2, ',', '.') }}</td>
+                                        <td class="p-2 text-right">€ {{ number_format((float)$riga['prezzo_unitario'], 2, ',', '.') }}</td>
+                                        <td class="p-2 text-right">€ {{ number_format((float)$riga['importo'], 2, ',', '.') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="p-2 text-gray-500">Nessuna riga ordine.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-sm font-semibold mb-1">Righe intervento (confronto)</div>
+                    <div class="overflow-auto border rounded">
+                        <table class="min-w-full text-xs">
+                            <thead class="bg-gray-100 text-gray-600">
+                                <tr>
+                                    <th class="p-2 text-left">Cod. Art.</th>
+                                    <th class="p-2 text-left">Descrizione</th>
+                                    <th class="p-2 text-right">Q.tà</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse(($riepilogoOrdine['righe_intervento'] ?? []) as $riga)
+                                    <tr class="border-t">
+                                        <td class="p-2 font-mono">{{ $riga['codice_articolo'] }}</td>
+                                        <td class="p-2">{{ $riga['descrizione'] ?: '—' }}</td>
+                                        <td class="p-2 text-right">{{ number_format((float)$riga['quantita'], 2, ',', '.') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="3" class="p-2 text-gray-500">Nessuna riga intervento.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            @if(!empty($senzaCodice))
+                <div class="rounded border border-amber-300 bg-amber-50 p-3 text-xs">
+                    <div class="font-semibold text-amber-800 mb-1">Presidi senza codice articolo di fatturazione</div>
+                    <div class="space-y-1">
+                        @foreach($senzaCodice as $row)
+                            <div>{{ $row['categoria'] }} #{{ $row['progressivo'] }} — {{ $row['tipo'] }}</div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if($confrontoOrdine['ok'] ?? false)
+                <div class="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-700">
+                    Nessuna differenza tra ordine preventivo e presidi dell'intervento.
+                </div>
+            @else
+                <div class="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 space-y-2">
+                    <div class="font-semibold">Differenze rilevate</div>
+                    @foreach(($confrontoOrdine['solo_ordine'] ?? []) as $row)
+                        <div>Solo in ordine: {{ $row['codice_articolo'] }} ({{ $row['descrizione'] ?: '—' }}) — q.tà ordine {{ number_format((float)$row['quantita_ordine'], 2, ',', '.') }}</div>
+                    @endforeach
+                    @foreach(($confrontoOrdine['solo_intervento'] ?? []) as $row)
+                        <div>Solo in intervento: {{ $row['codice_articolo'] }} ({{ $row['descrizione'] ?: '—' }}) — q.tà intervento {{ number_format((float)$row['quantita_intervento'], 2, ',', '.') }}</div>
+                    @endforeach
+                    @foreach(($confrontoOrdine['differenze_quantita'] ?? []) as $row)
+                        <div>Q.tà diversa: {{ $row['codice_articolo'] }} — ordine {{ number_format((float)$row['quantita_ordine'], 2, ',', '.') }}, intervento {{ number_format((float)$row['quantita_intervento'], 2, ',', '.') }}</div>
+                    @endforeach
+                </div>
+            @endif
+        @endif
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="rounded border border-gray-200 p-2">
+                <div class="text-xs text-gray-500">Anomalie totali</div>
+                <div class="text-lg font-semibold">{{ $anomalieRiep['totale'] ?? 0 }}</div>
+            </div>
+            <div class="rounded border border-green-200 bg-green-50 p-2">
+                <div class="text-xs text-green-700">Riparate</div>
+                <div class="text-lg font-semibold text-green-700">{{ $anomalieRiep['riparate'] ?? 0 }}</div>
+            </div>
+            <div class="rounded border border-amber-200 bg-amber-50 p-2">
+                <div class="text-xs text-amber-700">Da preventivare</div>
+                <div class="text-lg font-semibold text-amber-700">{{ $anomalieRiep['preventivo'] ?? 0 }}</div>
+            </div>
+        </div>
+
+        @if(!empty($anomalieRiep['dettaglio']))
+            <div class="overflow-auto border rounded">
+                <table class="min-w-full text-xs">
+                    <thead class="bg-gray-100 text-gray-600">
+                        <tr>
+                            <th class="p-2 text-left">Anomalia</th>
+                            <th class="p-2 text-right">Totale</th>
+                            <th class="p-2 text-right">Riparate</th>
+                            <th class="p-2 text-right">Preventivo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($anomalieRiep['dettaglio'] as $row)
+                            <tr class="border-t">
+                                <td class="p-2">{{ $row['etichetta'] }}</td>
+                                <td class="p-2 text-right">{{ $row['totale'] }}</td>
+                                <td class="p-2 text-right text-green-700">{{ $row['riparate'] }}</td>
+                                <td class="p-2 text-right text-amber-700">{{ $row['preventivo'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
 {{-- Tempo Effettivo --}}
 <div class="mt-6 space-y-3">
     @if ($messaggioErrore)
@@ -824,6 +992,24 @@
 let canvas = document.getElementById('firmaCanvas');
 let ctx = canvas.getContext('2d');
 let drawing = false;
+
+document.addEventListener('livewire:init', () => {
+    if (!window.__evadiInterventoCompletatoHooked) {
+        window.__evadiInterventoCompletatoHooked = true;
+        Livewire.on('intervento-completato', (payload) => {
+            const pdfUrl = payload?.pdfUrl ?? null;
+            const redirectUrl = payload?.redirectUrl ?? null;
+            if (pdfUrl) {
+                window.open(pdfUrl, '_blank');
+            }
+            if (redirectUrl) {
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 500);
+            }
+        });
+    }
+});
 
 canvas.addEventListener('mousedown', start);
 canvas.addEventListener('mouseup', stop);
