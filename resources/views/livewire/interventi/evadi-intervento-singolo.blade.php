@@ -1269,6 +1269,8 @@ function initOfflineSync() {
         return el.value ?? null;
     };
 
+    const isEsitoModel = (model) => /^input\.\d+\.esito$/.test(model);
+
     const collectDraftPayload = () => {
         const payload = { input: {} };
         const controls = root.querySelectorAll('input, select, textarea');
@@ -1335,11 +1337,41 @@ function initOfflineSync() {
         }
     };
 
-    const writeDraft = (payload) => {
+    const mergePayload = (basePayload, partialPayload) => {
+        const baseInput = (basePayload && typeof basePayload === 'object' && basePayload.input && typeof basePayload.input === 'object')
+            ? basePayload.input
+            : {};
+        const partialInput = (partialPayload && typeof partialPayload === 'object' && partialPayload.input && typeof partialPayload.input === 'object')
+            ? partialPayload.input
+            : {};
+
+        const merged = { input: { ...baseInput } };
+        Object.keys(partialInput).forEach((piId) => {
+            merged.input[piId] = {
+                ...(merged.input[piId] || {}),
+                ...(partialInput[piId] || {}),
+            };
+        });
+
+        if (basePayload && Object.prototype.hasOwnProperty.call(basePayload, 'durataEffettiva')) {
+            merged.durataEffettiva = basePayload.durataEffettiva;
+        }
+        if (partialPayload && Object.prototype.hasOwnProperty.call(partialPayload, 'durataEffettiva')) {
+            merged.durataEffettiva = partialPayload.durataEffettiva;
+        }
+
+        return merged;
+    };
+
+    const writeDraft = (payload, mergeWithExisting = true) => {
+        const current = readDraft();
+        const finalPayload = mergeWithExisting && current?.payload
+            ? mergePayload(current.payload, payload)
+            : payload;
         const draft = {
             pendingSync: true,
             savedAt: new Date().toISOString(),
-            payload,
+            payload: finalPayload,
         };
         try {
             localStorage.setItem(storageKey, JSON.stringify(draft));
@@ -1384,6 +1416,20 @@ function initOfflineSync() {
         setBanner('offline', 'Sei offline: modifiche salvate in locale. Verranno inviate appena torna internet.');
     };
 
+    const saveEsitoImmediatelyIfOffline = (event) => {
+        if (navigator.onLine) return;
+        const el = event.target;
+        if (!(el instanceof HTMLSelectElement)) return;
+
+        const model = getWireModel(el);
+        if (!model || !isEsitoModel(model)) return;
+
+        const payload = { input: {} };
+        setByPath(payload, model, getElementValue(el));
+        writeDraft(payload, true);
+        setBanner('offline', 'Sei offline: stato presidio salvato in locale.');
+    };
+
     const scheduleOfflineCapture = () => {
         clearTimeout(debounceId);
         debounceId = setTimeout(queueDraftIfOffline, 250);
@@ -1391,6 +1437,7 @@ function initOfflineSync() {
 
     root.addEventListener('input', scheduleOfflineCapture, true);
     root.addEventListener('change', scheduleOfflineCapture, true);
+    root.addEventListener('change', saveEsitoImmediatelyIfOffline, true);
     root.addEventListener('click', (event) => {
         const el = event.target.closest('[wire\\:click]');
         if (!el || navigator.onLine) return;
