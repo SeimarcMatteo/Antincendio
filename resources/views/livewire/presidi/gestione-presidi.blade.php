@@ -1,4 +1,4 @@
-<div class="p-6 max-w-7xl mx-auto bg-white shadow rounded-lg">
+<div class="p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto bg-white shadow rounded-xl">
 
     {{-- =================== DATI CLIENTE =================== --}}
     <div class="mb-6 space-y-2">
@@ -20,7 +20,7 @@
         </div>
         <div class="mt-3">
             <a href="{{ route('presidi.import.massivo') }}"
-               class="inline-flex items-center px-3 py-2 rounded bg-gray-800 text-white text-xs hover:bg-gray-900">
+               class="inline-flex items-center px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-gray-900">
                 <i class="fa fa-layer-group mr-1"></i> Import massivo (multi‑file)
             </a>
         </div>
@@ -47,7 +47,7 @@
             @foreach(['Estintore', 'Idrante', 'Porta'] as $cat)
                 <button
                     wire:click="selezionaCategoria('{{ $cat }}')"
-                    class="px-4 py-2 rounded {{ $categoriaAttiva === $cat ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                    class="px-4 py-3 text-sm font-semibold rounded-lg {{ $categoriaAttiva === $cat ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
                     {{ $cat }}{{ $categoriaAttiva === $cat ? ' (attiva)' : '' }}
                 </button>
             @endforeach

@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6">
+<div class="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6 space-y-6 lg:space-y-7">
     <h1 class="text-2xl font-bold text-red-700">
         🛠 Evadi Intervento:
         <a href="{{ route('clienti.mostra', $intervento->cliente_id) }}" class="text-gray-800 hover:text-red-800 underline">
@@ -37,13 +37,13 @@
             </div>
             <div class="flex items-center gap-2">
                 <button
-                    class="px-3 py-2 text-sm rounded border {{ $timerAttivo ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50' }}"
+                    class="px-4 py-2 text-sm font-semibold rounded border {{ $timerAttivo ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50' }}"
                     wire:click="avviaIntervento"
                     @disabled($timerAttivo)>
                     ▶️ Inizia
                 </button>
                 <button
-                    class="px-3 py-2 text-sm rounded border {{ $timerAttivo ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 text-gray-400 cursor-not-allowed' }}"
+                    class="px-4 py-2 text-sm font-semibold rounded border {{ $timerAttivo ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 text-gray-400 cursor-not-allowed' }}"
                     wire:click="terminaIntervento"
                     @disabled(!$timerAttivo)>
                     ⏹ Fine
@@ -76,7 +76,7 @@
                                 </div>
                                 <div>
                                     <button wire:click="salvaSessioneTimer({{ $sess['id'] }})"
-                                            class="px-3 py-2 text-xs rounded border border-gray-300 hover:bg-gray-50 w-full md:w-auto">
+                                            class="px-3 py-2 text-sm rounded border border-gray-300 hover:bg-gray-50 w-full md:w-auto">
                                         Salva orari
                                     </button>
                                 </div>
@@ -103,15 +103,15 @@
     <div class="flex flex-wrap items-center gap-3">
         <label class="font-medium text-sm">Vista:</label>
         <button wire:click="$set('vistaSchede', false)"
-            class="text-sm px-4 py-2 rounded border {{ $vistaSchede ? 'bg-white text-gray-700 border-gray-300' : 'bg-red-600 text-white border-red-600' }}">
+            class="text-sm font-semibold px-4 py-2 rounded border {{ $vistaSchede ? 'bg-white text-gray-700 border-gray-300' : 'bg-red-600 text-white border-red-600' }}">
             Tabella
         </button>
         <button wire:click="$set('vistaSchede', true)"
-            class="text-sm px-4 py-2 rounded border {{ $vistaSchede ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300' }}">
+            class="text-sm font-semibold px-4 py-2 rounded border {{ $vistaSchede ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300' }}">
             Schede
         </button>
     </div>
-    <button wire:click="apriFormNuovoPresidio" class="text-sm px-4 py-2 bg-green-600 text-white rounded shadow">
+    <button wire:click="apriFormNuovoPresidio" class="text-sm font-semibold px-5 py-3 bg-green-600 text-white rounded-lg shadow">
         ➕ Aggiungi nuovo presidio
     </button>
     @if($formNuovoVisibile)
