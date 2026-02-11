@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+<div class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6">
     <h1 class="text-2xl font-bold text-red-700">
         🛠 Evadi Intervento:
         <a href="{{ route('clienti.mostra', $intervento->cliente_id) }}" class="text-gray-800 hover:text-red-800 underline">
@@ -25,21 +25,21 @@
         $end = $pivot?->ended_at ? \Carbon\Carbon::parse($pivot->ended_at) : null;
     @endphp
     @if($currentTecnico)
-        <div class="flex items-center gap-3 text-sm bg-white border rounded p-3 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 text-sm bg-white border rounded p-3 shadow-sm">
             <div class="font-semibold text-gray-700">⏱ Timer intervento</div>
             <div class="text-xs text-gray-600">
                 Inizio: <span class="font-medium">{{ $start ? $start->format('H:i') : '—' }}</span>
                 · Fine: <span class="font-medium">{{ $end ? $end->format('H:i') : '—' }}</span>
             </div>
-            <div class="ml-auto flex items-center gap-2">
+            <div class="sm:ml-auto flex items-center gap-2">
                 <button
-                    class="px-2 py-1 text-xs rounded border {{ $pivot?->started_at ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50' }}"
+                    class="px-3 py-2 text-sm rounded border {{ $pivot?->started_at ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50' }}"
                     wire:click="avviaIntervento"
                     @disabled($pivot?->started_at)>
                     ▶️ Inizia
                 </button>
                 <button
-                    class="px-2 py-1 text-xs rounded border {{ ($pivot?->started_at && !$pivot?->ended_at) ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 text-gray-400 cursor-not-allowed' }}"
+                    class="px-3 py-2 text-sm rounded border {{ ($pivot?->started_at && !$pivot?->ended_at) ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 text-gray-400 cursor-not-allowed' }}"
                     wire:click="terminaIntervento"
                     @disabled(!$pivot?->started_at || $pivot?->ended_at)>
                     ⏹ Fine
@@ -55,18 +55,18 @@
     </datalist>
 
     {{-- Switch Vista --}}
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
         <label class="font-medium text-sm">Vista:</label>
         <button wire:click="$set('vistaSchede', false)"
-            class="text-sm px-3 py-1 rounded border {{ $vistaSchede ? 'bg-white text-gray-700 border-gray-300' : 'bg-red-600 text-white border-red-600' }}">
+            class="text-sm px-4 py-2 rounded border {{ $vistaSchede ? 'bg-white text-gray-700 border-gray-300' : 'bg-red-600 text-white border-red-600' }}">
             Tabella
         </button>
         <button wire:click="$set('vistaSchede', true)"
-            class="text-sm px-3 py-1 rounded border {{ $vistaSchede ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300' }}">
+            class="text-sm px-4 py-2 rounded border {{ $vistaSchede ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300' }}">
             Schede
         </button>
     </div>
-    <button wire:click="apriFormNuovoPresidio" class="text-sm px-3 py-1 bg-green-600 text-white rounded shadow">
+    <button wire:click="apriFormNuovoPresidio" class="text-sm px-4 py-2 bg-green-600 text-white rounded shadow">
         ➕ Aggiungi nuovo presidio
     </button>
     @if($formNuovoVisibile)
@@ -250,35 +250,52 @@
                                             @endif
                                         </td>
                                         <td class="p-2">
-                                            <div class="space-y-1 max-h-40 overflow-auto border border-gray-200 rounded p-2 bg-white">
-                                                @forelse(($anomalie[$pi->presidio->categoria] ?? []) as $anomalia)
-                                                    @php
-                                                        $sel = in_array((int) $anomalia->id, $input[$pi->id]['anomalie'] ?? [], true);
-                                                        $rip = (bool)($input[$pi->id]['anomalie_riparate'][$anomalia->id] ?? false);
-                                                    @endphp
-                                                    <div class="text-xs">
-                                                        <label class="inline-flex items-center gap-2">
+                                            @php
+                                                $anomList = ($anomalie[$pi->presidio->categoria] ?? collect());
+                                                $selectedAnom = collect($input[$pi->id]['anomalie'] ?? [])->map(fn($v)=>(int)$v)->values()->all();
+                                                $anomMap = $anomList->pluck('etichetta', 'id')->toArray();
+                                            @endphp
+                                            <div class="space-y-2">
+                                                <div class="space-y-1 max-h-36 overflow-auto border border-gray-200 rounded p-2 bg-white">
+                                                    @forelse($anomList as $anomalia)
+                                                        @php $sel = in_array((int) $anomalia->id, $selectedAnom, true); @endphp
+                                                        <label class="flex items-center gap-2 text-xs py-1">
                                                             <input type="checkbox"
-                                                                   wire:model="input.{{ $pi->id }}.anomalie"
-                                                                   value="{{ $anomalia->id }}"
-                                                                   class="border-gray-300">
+                                                                   @checked($sel)
+                                                                   wire:change="toggleAnomalia({{ $pi->id }}, {{ $anomalia->id }}, $event.target.checked)"
+                                                                   class="h-5 w-5 border-gray-300">
                                                             <span>{{ $anomalia->etichetta }}</span>
                                                         </label>
-                                                        @if($sel)
-                                                            <label class="ml-5 inline-flex items-center gap-1 text-[11px] text-gray-600">
-                                                                <input type="checkbox"
-                                                                       wire:model="input.{{ $pi->id }}.anomalie_riparate.{{ $anomalia->id }}"
-                                                                       class="border-gray-300">
-                                                                Riparata
-                                                            </label>
-                                                            @if(!$rip)
-                                                                <span class="ml-2 text-[11px] text-amber-700">Preventivo</span>
-                                                            @endif
-                                                        @endif
+                                                    @empty
+                                                        <div class="text-xs text-gray-500">Nessuna anomalia configurata per questa categoria.</div>
+                                                    @endforelse
+                                                </div>
+                                                @if(!empty($selectedAnom))
+                                                    <div class="border border-blue-200 rounded bg-blue-50 p-2">
+                                                        <div class="text-[11px] font-semibold text-blue-800 mb-1">Anomalie selezionate: stato riparazione</div>
+                                                        <div class="space-y-1">
+                                                            @foreach($selectedAnom as $anomId)
+                                                                @php
+                                                                    $rip = (bool)($input[$pi->id]['anomalie_riparate'][$anomId] ?? false);
+                                                                    $label = $anomMap[$anomId] ?? ('Anomalia #'.$anomId);
+                                                                @endphp
+                                                                <div class="flex items-center justify-between gap-2 text-xs">
+                                                                    <span class="truncate">{{ $label }}</span>
+                                                                    <label class="inline-flex items-center gap-2 shrink-0">
+                                                                        <input type="checkbox"
+                                                                               @checked($rip)
+                                                                               wire:change="toggleAnomaliaRiparata({{ $pi->id }}, {{ $anomId }}, $event.target.checked)"
+                                                                               class="h-5 w-5 border-gray-300">
+                                                                        <span>Riparata</span>
+                                                                    </label>
+                                                                    @if(!$rip)
+                                                                        <span class="text-amber-700 text-[11px]">Preventivo</span>
+                                                                    @endif
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
                                                     </div>
-                                                @empty
-                                                    <div class="text-xs text-gray-500">Nessuna anomalia configurata per questa categoria.</div>
-                                                @endforelse
+                                                @endif
                                             </div>
                                         </td>
                                         <td class="p-2">
@@ -553,35 +570,55 @@
 
                     <div>
                         <label class="text-sm">Anomalie</label>
-                        <div class="space-y-1 max-h-44 overflow-auto border border-gray-200 rounded p-2 bg-white">
-                            @forelse(($anomalie[$pi->presidio->categoria] ?? []) as $anomalia)
-                                @php
-                                    $sel = in_array((int) $anomalia->id, $input[$pi->id]['anomalie'] ?? [], true);
-                                    $rip = (bool)($input[$pi->id]['anomalie_riparate'][$anomalia->id] ?? false);
-                                @endphp
-                                <div class="text-xs">
-                                    <label class="inline-flex items-center gap-2">
+                        @php
+                            $anomList = ($anomalie[$pi->presidio->categoria] ?? collect());
+                            $selectedAnom = collect($input[$pi->id]['anomalie'] ?? [])->map(fn($v)=>(int)$v)->values()->all();
+                            $anomMap = $anomList->pluck('etichetta', 'id')->toArray();
+                        @endphp
+                        <div class="space-y-2">
+                            <div class="space-y-1 max-h-44 overflow-auto border border-gray-200 rounded p-2 bg-white">
+                                @forelse($anomList as $anomalia)
+                                    @php $sel = in_array((int) $anomalia->id, $selectedAnom, true); @endphp
+                                    <label class="flex items-center gap-2 text-sm py-1">
                                         <input type="checkbox"
-                                               wire:model="input.{{ $pi->id }}.anomalie"
-                                               value="{{ $anomalia->id }}"
-                                               class="border-gray-300">
+                                               @checked($sel)
+                                               wire:change="toggleAnomalia({{ $pi->id }}, {{ $anomalia->id }}, $event.target.checked)"
+                                               class="h-5 w-5 border-gray-300">
                                         <span>{{ $anomalia->etichetta }}</span>
                                     </label>
-                                    @if($sel)
-                                        <label class="ml-5 inline-flex items-center gap-1 text-[11px] text-gray-600">
-                                            <input type="checkbox"
-                                                   wire:model="input.{{ $pi->id }}.anomalie_riparate.{{ $anomalia->id }}"
-                                                   class="border-gray-300">
-                                            Riparata
-                                        </label>
-                                        @if(!$rip)
-                                            <span class="ml-2 text-[11px] text-amber-700">Preventivo</span>
-                                        @endif
-                                    @endif
+                                @empty
+                                    <div class="text-xs text-gray-500">Nessuna anomalia configurata per questa categoria.</div>
+                                @endforelse
+                            </div>
+
+                            @if(!empty($selectedAnom))
+                                <div class="border border-blue-200 rounded bg-blue-50 p-2">
+                                    <div class="text-xs font-semibold text-blue-800 mb-1">Stato anomalie selezionate</div>
+                                    <div class="space-y-2">
+                                        @foreach($selectedAnom as $anomId)
+                                            @php
+                                                $rip = (bool)($input[$pi->id]['anomalie_riparate'][$anomId] ?? false);
+                                                $label = $anomMap[$anomId] ?? ('Anomalia #'.$anomId);
+                                            @endphp
+                                            <div class="flex items-center justify-between gap-2 text-sm">
+                                                <span class="truncate">{{ $label }}</span>
+                                                <div class="flex items-center gap-3 shrink-0">
+                                                    <label class="inline-flex items-center gap-2">
+                                                        <input type="checkbox"
+                                                               @checked($rip)
+                                                               wire:change="toggleAnomaliaRiparata({{ $pi->id }}, {{ $anomId }}, $event.target.checked)"
+                                                               class="h-5 w-5 border-gray-300">
+                                                        <span class="text-xs">Riparata</span>
+                                                    </label>
+                                                    @if(!$rip)
+                                                        <span class="text-amber-700 text-xs">Preventivo</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </div>
-                            @empty
-                                <div class="text-xs text-gray-500">Nessuna anomalia configurata per questa categoria.</div>
-                            @endforelse
+                            @endif
                         </div>
                     </div>
 
@@ -974,13 +1011,13 @@
 
 
 
-    <div class="text-end">
-        <button wire:click="salva" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-        💾 Salva e completa intervento
-        </button>
-        <div class="mt-6 flex justify-end">
+    <div class="sticky bottom-0 z-20 -mx-3 sm:mx-0 mt-6 border-t border-gray-200 bg-white/95 backdrop-blur px-3 py-3">
+        <div class="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <button wire:click="salva" class="w-full sm:w-auto px-4 py-3 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold">
+                💾 Salva e completa intervento
+            </button>
             <a href="{{ route('rapportino.pdf', $intervento->id) }}" target="_blank"
-            class="btn btn-outline btn-success">
+               class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-3 rounded border border-green-600 text-green-700 hover:bg-green-50 text-sm font-medium">
                 <i class="fa fa-file-pdf mr-1"></i> Scarica Rapportino PDF
             </a>
         </div>

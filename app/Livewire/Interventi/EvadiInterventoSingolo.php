@@ -447,6 +447,70 @@ public function salvaNuovoPresidio()
         }
     }
 
+    public function toggleAnomalia(int $piId, int $anomaliaId, $checked): void
+    {
+        $checked = filter_var($checked, FILTER_VALIDATE_BOOL);
+        if (!isset($this->input[$piId])) {
+            return;
+        }
+
+        $selected = $this->normalizeAnomalieIds($this->input[$piId]['anomalie'] ?? []);
+        $selectedMap = array_fill_keys($selected, true);
+
+        if ($checked) {
+            $selectedMap[$anomaliaId] = true;
+        } else {
+            unset($selectedMap[$anomaliaId]);
+        }
+
+        $selected = array_keys($selectedMap);
+        sort($selected);
+
+        $riparate = $this->input[$piId]['anomalie_riparate'] ?? [];
+        if (!$checked) {
+            unset($riparate[$anomaliaId]);
+        }
+        $riparate = $this->normalizeAnomalieRiparate($selected, $riparate);
+
+        $this->input[$piId]['anomalie'] = $selected;
+        $this->input[$piId]['anomalie_riparate'] = $riparate;
+
+        $pi = $this->intervento->presidiIntervento->firstWhere('id', $piId) ?? PresidioIntervento::find($piId);
+        if (!$pi) {
+            return;
+        }
+
+        $this->syncAnomaliePresidioIntervento($pi, $selected, $riparate);
+    }
+
+    public function toggleAnomaliaRiparata(int $piId, int $anomaliaId, $checked): void
+    {
+        $checked = filter_var($checked, FILTER_VALIDATE_BOOL);
+        if (!isset($this->input[$piId])) {
+            return;
+        }
+
+        $selected = $this->normalizeAnomalieIds($this->input[$piId]['anomalie'] ?? []);
+        if (!in_array($anomaliaId, $selected, true)) {
+            $selected[] = $anomaliaId;
+            sort($selected);
+        }
+
+        $riparate = $this->input[$piId]['anomalie_riparate'] ?? [];
+        $riparate[$anomaliaId] = $checked;
+        $riparate = $this->normalizeAnomalieRiparate($selected, $riparate);
+
+        $this->input[$piId]['anomalie'] = $selected;
+        $this->input[$piId]['anomalie_riparate'] = $riparate;
+
+        $pi = $this->intervento->presidiIntervento->firstWhere('id', $piId) ?? PresidioIntervento::find($piId);
+        if (!$pi) {
+            return;
+        }
+
+        $this->syncAnomaliePresidioIntervento($pi, $selected, $riparate);
+    }
+
     private function handleInputUpdate($value, $name): void
     {
         $segments = explode('.', (string) $name);
