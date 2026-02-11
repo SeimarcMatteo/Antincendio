@@ -133,16 +133,42 @@
                 </select>
             </div>
 
-            @if(($nuovoPresidio['categoria'] ?? 'Estintore') === 'Estintore')
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Tipo Estintore</label>
+            <div>
+                @php $categoriaNuovo = $nuovoPresidio['categoria'] ?? 'Estintore'; @endphp
+                <label class="block text-sm font-medium text-gray-700">
+                    @if($categoriaNuovo === 'Idrante')
+                        Tipo Idrante
+                    @elseif($categoriaNuovo === 'Porta')
+                        Tipo Porta
+                    @else
+                        Tipo Estintore
+                    @endif
+                </label>
+                @if($categoriaNuovo === 'Idrante')
+                    <select wire:model.defer="nuovoPresidio.idrante_tipo_id" class="w-full border-gray-300 rounded px-2 py-1">
+                        <option value="">Seleziona tipo</option>
+                        @foreach($tipiIdranti as $id => $tipo)
+                            <option value="{{ $id }}">{{ $tipo }}</option>
+                        @endforeach
+                    </select>
+                @elseif($categoriaNuovo === 'Porta')
+                    <select wire:model.defer="nuovoPresidio.porta_tipo_id" class="w-full border-gray-300 rounded px-2 py-1">
+                        <option value="">Seleziona tipo</option>
+                        @foreach($tipiPorte as $id => $tipo)
+                            <option value="{{ $id }}">{{ $tipo }}</option>
+                        @endforeach
+                    </select>
+                @else
                     <select wire:model="nuovoPresidio.tipo_estintore_id" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1">
                         <option value="">Seleziona tipo</option>
                         @foreach($tipiEstintori as $tipo)
                             <option value="{{ $tipo->id }}">{{ $tipo->sigla }} – {{ $tipo->descrizione }}</option>
                         @endforeach
                     </select>
-                </div>
+                @endif
+            </div>
+
+            @if($categoriaNuovo === 'Estintore')
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Data Serbatoio</label>
@@ -165,30 +191,6 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Ultima Revisione</label>
                     <input type="date" wire:model="nuovoPresidio.data_ultima_revisione" wire:change="aggiornaPreviewNuovo" class="w-full border-gray-300 rounded px-2 py-1">
-                </div>
-            @endif
-
-            @if(($nuovoPresidio['categoria'] ?? '') === 'Idrante')
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Tipo Idrante</label>
-                    <select wire:model.defer="nuovoPresidio.idrante_tipo_id" class="w-full border-gray-300 rounded px-2 py-1">
-                        <option value="">Seleziona tipo</option>
-                        @foreach($tipiIdranti as $id => $tipo)
-                            <option value="{{ $id }}">{{ $tipo }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            @endif
-
-            @if(($nuovoPresidio['categoria'] ?? '') === 'Porta')
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Tipo Porta</label>
-                    <select wire:model.defer="nuovoPresidio.porta_tipo_id" class="w-full border-gray-300 rounded px-2 py-1">
-                        <option value="">Seleziona tipo</option>
-                        @foreach($tipiPorte as $id => $tipo)
-                            <option value="{{ $id }}">{{ $tipo }}</option>
-                        @endforeach
-                    </select>
                 </div>
             @endif
 
