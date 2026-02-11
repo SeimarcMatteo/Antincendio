@@ -62,11 +62,11 @@ public function apriFormNuovoPresidio()
         'marca_serbatoio' => null,
         'data_ultima_revisione' => null,
         'categoria' => 'Estintore',
-        'idrante_tipo' => null,
+        'idrante_tipo_id' => null,
         'idrante_lunghezza' => null,
         'idrante_sopra_suolo' => false,
         'idrante_sotto_suolo' => false,
-        'porta_tipo' => null,
+        'porta_tipo_id' => null,
         'note' => '',
         'usa_ritiro' => false, // nuovo flag
     ];
@@ -98,8 +98,8 @@ public function salvaNuovoPresidio()
     $marcaSerbatoio = $categoria === 'Estintore' ? $this->normalizeMarca($this->nuovoPresidio['marca_serbatoio'] ?? null) : null;
     $dataUltimaRev = $categoria === 'Estintore' ? ($this->nuovoPresidio['data_ultima_revisione'] ?? null) : null;
 
-    $idranteTipo = $categoria === 'Idrante' ? mb_strtoupper(trim((string) ($this->nuovoPresidio['idrante_tipo'] ?? ''))) : null;
-    $portaTipo = $categoria === 'Porta' ? mb_strtoupper(trim((string) ($this->nuovoPresidio['porta_tipo'] ?? ''))) : null;
+    $idranteTipoId = $categoria === 'Idrante' ? ($this->nuovoPresidio['idrante_tipo_id'] ?? null) : null;
+    $portaTipoId = $categoria === 'Porta' ? ($this->nuovoPresidio['porta_tipo_id'] ?? null) : null;
 
     $presidio = Presidio::create([
         'cliente_id' => $clienteId,
@@ -111,11 +111,11 @@ public function salvaNuovoPresidio()
         'data_serbatoio' => $dataSerbatoio,
         'marca_serbatoio' => $marcaSerbatoio,
         'data_ultima_revisione' => $dataUltimaRev,
-        'idrante_tipo' => $idranteTipo ?: null,
+        'idrante_tipo_id' => $idranteTipoId ?: null,
         'idrante_lunghezza' => $this->nuovoPresidio['idrante_lunghezza'] ?? null,
         'idrante_sopra_suolo' => $this->nuovoPresidio['idrante_sopra_suolo'] ?? false,
         'idrante_sotto_suolo' => $this->nuovoPresidio['idrante_sotto_suolo'] ?? false,
-        'porta_tipo' => $portaTipo ?: null,
+        'porta_tipo_id' => $portaTipoId ?: null,
         'note' => $this->nuovoPresidio['note'],
     ]);
 
@@ -131,7 +131,7 @@ public function salvaNuovoPresidio()
     ]);
 
     // Ricarico l'intervento completo con il nuovo legame
-    $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore');
+    $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore', 'presidiIntervento.presidio.idranteTipoRef', 'presidiIntervento.presidio.portaTipoRef');
     
     // Inizializzazione sicura input
         $this->input[$pi->id] = [
@@ -145,11 +145,11 @@ public function salvaNuovoPresidio()
             'nuova_data_serbatoio' => null,
             'nuova_marca_serbatoio' => $presidio->marca_serbatoio,
             'nuova_data_ultima_revisione' => $presidio->data_ultima_revisione,
-            'nuovo_idrante_tipo' => $presidio->idrante_tipo,
+            'nuovo_idrante_tipo_id' => $presidio->idrante_tipo_id,
             'nuovo_idrante_lunghezza' => $presidio->idrante_lunghezza,
             'nuovo_idrante_sopra_suolo' => $presidio->idrante_sopra_suolo ?? false,
             'nuovo_idrante_sotto_suolo' => $presidio->idrante_sotto_suolo ?? false,
-            'nuovo_porta_tipo' => $presidio->porta_tipo,
+            'nuovo_porta_tipo_id' => $presidio->porta_tipo_id,
             'usa_ritiro' => false,
             'tipo_estintore_sigla' => optional($presidio->tipoEstintore)->sigla ?? '-',
             'deve_ritirare' => $this->verificaRitiroObbligato($presidio),
@@ -163,11 +163,11 @@ public function salvaNuovoPresidio()
     
     public function mount(Intervento $intervento)
     {
-        $this->intervento = $intervento->load('cliente', 'sede', 'tecnici', 'presidiIntervento.presidio.tipoEstintore.colore');
+        $this->intervento = $intervento->load('cliente', 'sede', 'tecnici', 'presidiIntervento.presidio.tipoEstintore.colore', 'presidiIntervento.presidio.idranteTipoRef', 'presidiIntervento.presidio.portaTipoRef');
         $this->durataEffettiva = $this->intervento->durata_effettiva;
         $this->marcaSuggestions = $this->caricaMarcheSuggerite();
-        $this->tipiIdranti = TipoPresidio::where('categoria', 'Idrante')->orderBy('nome')->pluck('nome')->all();
-        $this->tipiPorte = TipoPresidio::where('categoria', 'Porta')->orderBy('nome')->pluck('nome')->all();
+        $this->tipiIdranti = TipoPresidio::where('categoria', 'Idrante')->orderBy('nome')->pluck('nome', 'id')->all();
+        $this->tipiPorte = TipoPresidio::where('categoria', 'Porta')->orderBy('nome')->pluck('nome', 'id')->all();
 
         // Se non esistono ancora presidi_intervento, generarli
         if ($this->intervento->presidiIntervento->isEmpty()) {
@@ -188,7 +188,7 @@ public function salvaNuovoPresidio()
             }
     
             // Reload dopo la creazione
-            $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore');
+            $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore', 'presidiIntervento.presidio.idranteTipoRef', 'presidiIntervento.presidio.portaTipoRef');
         }
     
         // Inizializzazione input per ogni presidio_intervento
@@ -197,26 +197,26 @@ public function salvaNuovoPresidio()
         
             $deveEssereRitirato = $this->verificaRitiroObbligato($presidio);
         
-        $this->input[$pi->id] = [
-            'ubicazione' => $presidio->ubicazione,
-            'note' => $pi->note,
-            'esito' => $pi->esito ?? 'non_verificato',
-            'anomalie' => is_array($pi->anomalie) ? $pi->anomalie : [],
-            'sostituito_con' => Presidio::find($pi->sostituito_con_presidio_id) ?? 0,
-            'sostituzione' => false,
-            'nuovo_tipo_estintore_id' => null,
-            'nuova_data_serbatoio' => null,
-            'nuova_marca_serbatoio' => $presidio->marca_serbatoio,
-            'nuova_data_ultima_revisione' => $presidio->data_ultima_revisione,
-            'nuovo_idrante_tipo' => $presidio->idrante_tipo,
-            'nuovo_idrante_lunghezza' => $presidio->idrante_lunghezza,
-            'nuovo_idrante_sopra_suolo' => $presidio->idrante_sopra_suolo ?? false,
-            'nuovo_idrante_sotto_suolo' => $presidio->idrante_sotto_suolo ?? false,
-            'nuovo_porta_tipo' => $presidio->porta_tipo,
-            'usa_ritiro' => $pi->usa_ritiro ?? false,
-            'tipo_estintore_sigla' => optional($presidio->tipoEstintore)->sigla ?? '-',
-            'deve_ritirare' => $deveEssereRitirato,
-        ];
+            $this->input[$pi->id] = [
+                'ubicazione' => $presidio->ubicazione,
+                'note' => $pi->note,
+                'esito' => $pi->esito ?? 'non_verificato',
+                'anomalie' => is_array($pi->anomalie) ? $pi->anomalie : [],
+                'sostituito_con' => Presidio::find($pi->sostituito_con_presidio_id) ?? 0,
+                'sostituzione' => false,
+                'nuovo_tipo_estintore_id' => null,
+                'nuova_data_serbatoio' => null,
+                'nuova_marca_serbatoio' => $presidio->marca_serbatoio,
+                'nuova_data_ultima_revisione' => $presidio->data_ultima_revisione,
+                'nuovo_idrante_tipo_id' => $presidio->idrante_tipo_id,
+                'nuovo_idrante_lunghezza' => $presidio->idrante_lunghezza,
+                'nuovo_idrante_sopra_suolo' => $presidio->idrante_sopra_suolo ?? false,
+                'nuovo_idrante_sotto_suolo' => $presidio->idrante_sotto_suolo ?? false,
+                'nuovo_porta_tipo_id' => $presidio->porta_tipo_id,
+                'usa_ritiro' => $pi->usa_ritiro ?? false,
+                'tipo_estintore_sigla' => optional($presidio->tipoEstintore)->sigla ?? '-',
+                'deve_ritirare' => $deveEssereRitirato,
+            ];
         }
     }
 
@@ -273,8 +273,8 @@ public function salvaNuovoPresidio()
             'tipo_estintore_id' => $p->tipo_estintore_id,
             'data_serbatoio' => $p->data_serbatoio ? \Carbon\Carbon::parse($p->data_serbatoio)->format('Y-m-d') : null,
             'data_ultima_revisione' => $p->data_ultima_revisione ? \Carbon\Carbon::parse($p->data_ultima_revisione)->format('Y-m-d') : null,
-            'idrante_tipo' => $p->idrante_tipo,
-            'porta_tipo' => $p->porta_tipo,
+            'idrante_tipo_id' => $p->idrante_tipo_id,
+            'porta_tipo_id' => $p->porta_tipo_id,
         ];
 
         $this->editMode[$piId] = true;
@@ -324,16 +324,16 @@ public function salvaNuovoPresidio()
             $p->data_ultima_revisione = $data['data_ultima_revisione'] ?? null;
             $p->calcolaScadenze();
         } elseif ($p->categoria === 'Idrante') {
-            $p->idrante_tipo = $this->normalizeTipoPresidio($data['idrante_tipo'] ?? null);
+            $p->idrante_tipo_id = $data['idrante_tipo_id'] ?? null;
         } elseif ($p->categoria === 'Porta') {
-            $p->porta_tipo = $this->normalizeTipoPresidio($data['porta_tipo'] ?? null);
+            $p->porta_tipo_id = $data['porta_tipo_id'] ?? null;
         }
 
         $p->save();
 
         $this->editMode[$piId] = false;
         $this->messaggioSuccesso = 'Presidio aggiornato.';
-        $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore');
+        $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore', 'presidiIntervento.presidio.idranteTipoRef', 'presidiIntervento.presidio.portaTipoRef');
 
         if (isset($this->input[$piId])) {
             $this->input[$piId]['ubicazione'] = $p->ubicazione;
@@ -425,7 +425,7 @@ public function salvaNuovoPresidio()
         $pi->delete();
     
         $this->messaggioSuccesso = 'Presidio rimosso dall’intervento.';
-    $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore');
+    $this->intervento->load('presidiIntervento.presidio.tipoEstintore.colore', 'presidiIntervento.presidio.idranteTipoRef', 'presidiIntervento.presidio.portaTipoRef');
     }
     public function getAnomalieProperty()
     {
@@ -522,11 +522,11 @@ public function salvaNuovoPresidio()
             'data_serbatoio' => $cat === 'Estintore' ? ($dati['nuova_data_serbatoio'] ?? null) : null,
             'marca_serbatoio' => $cat === 'Estintore' ? $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio) : null,
             'data_ultima_revisione' => $cat === 'Estintore' ? ($dati['nuova_data_ultima_revisione'] ?? null) : null,
-            'idrante_tipo' => $cat === 'Idrante' ? $this->normalizeTipoPresidio($dati['nuovo_idrante_tipo'] ?? $vecchio->idrante_tipo) : null,
+            'idrante_tipo_id' => $cat === 'Idrante' ? ($dati['nuovo_idrante_tipo_id'] ?? $vecchio->idrante_tipo_id) : null,
             'idrante_lunghezza' => $cat === 'Idrante' ? ($dati['nuovo_idrante_lunghezza'] ?? $vecchio->idrante_lunghezza) : null,
             'idrante_sopra_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sopra_suolo'] ?? $vecchio->idrante_sopra_suolo) : false,
             'idrante_sotto_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sotto_suolo'] ?? $vecchio->idrante_sotto_suolo) : false,
-            'porta_tipo' => $cat === 'Porta' ? $this->normalizeTipoPresidio($dati['nuovo_porta_tipo'] ?? $vecchio->porta_tipo) : null,
+            'porta_tipo_id' => $cat === 'Porta' ? ($dati['nuovo_porta_tipo_id'] ?? $vecchio->porta_tipo_id) : null,
             'mesi_visita' => $vecchio->mesi_visita,
         ]);
 
@@ -603,16 +603,16 @@ public function salvaNuovoPresidio()
                 'progressivo' => $vecchio->progressivo,
                 'ubicazione' => $vecchio->ubicazione,
                 'tipo_estintore_id' => $cat === 'Estintore' ? ($dati['nuovo_tipo_estintore_id'] ?? null) : null,
-                'data_serbatoio' => $cat === 'Estintore' ? ($dati['nuova_data_serbatoio'] ?? null) : null,
-                'marca_serbatoio' => $cat === 'Estintore' ? $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio) : null,
-                'data_ultima_revisione' => $cat === 'Estintore' ? ($dati['nuova_data_ultima_revisione'] ?? null) : null,
-                'idrante_tipo' => $cat === 'Idrante' ? $this->normalizeTipoPresidio($dati['nuovo_idrante_tipo'] ?? $vecchio->idrante_tipo) : null,
-                'idrante_lunghezza' => $cat === 'Idrante' ? ($dati['nuovo_idrante_lunghezza'] ?? $vecchio->idrante_lunghezza) : null,
-                'idrante_sopra_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sopra_suolo'] ?? $vecchio->idrante_sopra_suolo) : false,
-                'idrante_sotto_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sotto_suolo'] ?? $vecchio->idrante_sotto_suolo) : false,
-                'porta_tipo' => $cat === 'Porta' ? $this->normalizeTipoPresidio($dati['nuovo_porta_tipo'] ?? $vecchio->porta_tipo) : null,
-                'mesi_visita' => $vecchio->mesi_visita,
-            ]);
+            'data_serbatoio' => $cat === 'Estintore' ? ($dati['nuova_data_serbatoio'] ?? null) : null,
+            'marca_serbatoio' => $cat === 'Estintore' ? $this->normalizeMarca($dati['nuova_marca_serbatoio'] ?? $vecchio->marca_serbatoio) : null,
+            'data_ultima_revisione' => $cat === 'Estintore' ? ($dati['nuova_data_ultima_revisione'] ?? null) : null,
+            'idrante_tipo_id' => $cat === 'Idrante' ? ($dati['nuovo_idrante_tipo_id'] ?? $vecchio->idrante_tipo_id) : null,
+            'idrante_lunghezza' => $cat === 'Idrante' ? ($dati['nuovo_idrante_lunghezza'] ?? $vecchio->idrante_lunghezza) : null,
+            'idrante_sopra_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sopra_suolo'] ?? $vecchio->idrante_sopra_suolo) : false,
+            'idrante_sotto_suolo' => $cat === 'Idrante' ? ($dati['nuovo_idrante_sotto_suolo'] ?? $vecchio->idrante_sotto_suolo) : false,
+            'porta_tipo_id' => $cat === 'Porta' ? ($dati['nuovo_porta_tipo_id'] ?? $vecchio->porta_tipo_id) : null,
+            'mesi_visita' => $vecchio->mesi_visita,
+        ]);
 
             $nuovo->save();
             $nuovo->load('tipoEstintore');
@@ -731,12 +731,6 @@ public function salvaNuovoPresidio()
     {
         $marca = trim((string) $marca);
         return $marca === '' ? null : mb_strtoupper($marca);
-    }
-
-    private function normalizeTipoPresidio(?string $val): ?string
-    {
-        $val = trim((string) $val);
-        return $val === '' ? null : mb_strtoupper($val);
     }
 
 

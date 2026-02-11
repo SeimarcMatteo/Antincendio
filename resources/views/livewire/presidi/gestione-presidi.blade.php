@@ -363,11 +363,11 @@
                                 @if($presidio->id === $presidioInModifica)
                                     @if($presidio->categoria === 'Idrante')
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <select wire:model.defer="presidiData.{{ $presidio->id }}.idrante_tipo"
+                                            <select wire:model.defer="presidiData.{{ $presidio->id }}.idrante_tipo_id"
                                                     class="form-select text-xs">
                                                 <option value="">-- tipo --</option>
-                                                @foreach($tipiIdranti as $tipo)
-                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                @foreach($tipiIdranti as $id => $tipo)
+                                                    <option value="{{ $id }}">{{ $tipo }}</option>
                                                 @endforeach
                                             </select>
                                             <input type="text"
@@ -386,11 +386,11 @@
                                             </label>
                                         </div>
                                     @else
-                                        <select wire:model.defer="presidiData.{{ $presidio->id }}.porta_tipo"
+                                        <select wire:model.defer="presidiData.{{ $presidio->id }}.porta_tipo_id"
                                                 class="form-select text-xs w-full">
                                             <option value="">-- tipo porta --</option>
-                                            @foreach($tipiPorte as $tipo)
-                                                <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                            @foreach($tipiPorte as $id => $tipo)
+                                                <option value="{{ $id }}">{{ $tipo }}</option>
                                             @endforeach
                                         </select>
                                     @endif
@@ -398,13 +398,13 @@
                                     @if($presidio->categoria === 'Idrante')
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 mr-2">IDRANTE</span>
                                         <span class="text-xs text-gray-700">
-                                            {{ $presidio->idrante_tipo }} {{ $presidio->idrante_lunghezza }}
+                                            {{ $presidio->idranteTipoRef?->nome ?? $presidio->idrante_tipo }} {{ $presidio->idrante_lunghezza }}
                                             @if($presidio->idrante_sopra_suolo) · sopra @endif
                                             @if($presidio->idrante_sotto_suolo) · sotto @endif
                                         </span>
                                     @else
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-700 mr-2">PORTA</span>
-                                        <span class="text-xs text-gray-700">{{ $presidio->porta_tipo }}</span>
+                                        <span class="text-xs text-gray-700">{{ $presidio->portaTipoRef?->nome ?? $presidio->porta_tipo }}</span>
                                     @endif
                                 @endif
                             </td>
@@ -591,8 +591,8 @@
                     <label class="block text-sm font-medium text-gray-700">Tipo Idrante</label>
                     <select wire:model="idranteTipo" class="mt-1 w-full rounded border-gray-300 shadow-sm">
                         <option value="">Seleziona tipo</option>
-                        @foreach($tipiIdranti as $tipo)
-                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @foreach($tipiIdranti as $id => $tipo)
+                            <option value="{{ $id }}">{{ $tipo }}</option>
                         @endforeach
                     </select>
                     @error('idranteTipo') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -622,8 +622,8 @@
                     <label class="block text-sm font-medium text-gray-700">Tipo Porta</label>
                     <select wire:model="portaTipo" class="mt-1 w-full rounded border-gray-300 shadow-sm">
                         <option value="">Seleziona tipo</option>
-                        @foreach($tipiPorte as $tipo)
-                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @foreach($tipiPorte as $id => $tipo)
+                            <option value="{{ $id }}">{{ $tipo }}</option>
                         @endforeach
                     </select>
                     @error('portaTipo') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror

@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\ClassificazioneEstintore;
+use App\Models\TipoPresidio;
 use App\Services\Presidi\ProgressivoParser;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +20,7 @@ class Presidio extends Model
     protected $fillable = [
         'cliente_id', 'sede_id', 'categoria', 'progressivo', 'progressivo_num', 'progressivo_suffix',
         'ubicazione', 'tipo_contratto', 'tipo_estintore_id',
-        'idrante_tipo','idrante_lunghezza','idrante_sopra_suolo','idrante_sotto_suolo','porta_tipo',
+        'idrante_tipo','idrante_tipo_id','idrante_lunghezza','idrante_sopra_suolo','idrante_sotto_suolo','porta_tipo','porta_tipo_id',
         'data_serbatoio', 'marca_serbatoio', 'data_ultima_revisione',
         'data_revisione', 'data_collaudo',
         'data_fine_vita', 'data_sostituzione',
@@ -31,6 +32,8 @@ class Presidio extends Model
         'idrante_sopra_suolo' => 'boolean',
         'idrante_sotto_suolo' => 'boolean',
         'progressivo_num' => 'integer',
+        'idrante_tipo_id' => 'integer',
+        'porta_tipo_id' => 'integer',
     ];
 
     // Cutoff per cambiare il periodo di revisione
@@ -69,6 +72,26 @@ class Presidio extends Model
     public function tipoEstintore()
     {
         return $this->belongsTo(TipoEstintore::class, 'tipo_estintore_id');
+    }
+
+    public function idranteTipoRef()
+    {
+        return $this->belongsTo(TipoPresidio::class, 'idrante_tipo_id');
+    }
+
+    public function portaTipoRef()
+    {
+        return $this->belongsTo(TipoPresidio::class, 'porta_tipo_id');
+    }
+
+    public function getIdranteTipoAttribute($value)
+    {
+        return $this->idranteTipoRef?->nome ?? $value;
+    }
+
+    public function getPortaTipoAttribute($value)
+    {
+        return $this->portaTipoRef?->nome ?? $value;
     }
 
     /* ====================== SCOPE/UTILITY ====================== */

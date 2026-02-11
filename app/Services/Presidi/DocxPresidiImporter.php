@@ -6,7 +6,6 @@ use App\Models\Cliente;
 use App\Models\Presidio;
 use App\Models\Sede;
 use App\Models\TipoEstintore;
-use App\Models\TipoPresidio;
 use App\Livewire\Presidi\ImportaPresidi;
 use App\Services\Presidi\ProgressivoParser;
 use Illuminate\Support\Carbon;
@@ -127,13 +126,7 @@ class DocxPresidiImporter
                         $flag2 = !empty($r['anomalia_lancia'] ?? null);
                         $flag3 = !empty($r['anomalia_lastra'] ?? null);
                         $idrTipo = ImportaPresidi::normalizeIdranteTipo($idrTipo, $idrLen, $sopra, $sotto, $joinedUp);
-
-                        if ($idrTipo) {
-                            TipoPresidio::firstOrCreate([
-                                'categoria' => 'Idrante',
-                                'nome' => mb_strtoupper(trim((string) $idrTipo)),
-                            ]);
-                        }
+                        $idrTipoId = ImportaPresidi::resolveTipoPresidioId('Idrante', $idrTipo);
 
                         $sedeId = $this->resolveSedeId();
                         Presidio::updateOrCreate(
@@ -146,7 +139,7 @@ class DocxPresidiImporter
                             [
                                 'ubicazione'        => $ubic,
                                 'tipo_contratto'    => $contratto,
-                                'idrante_tipo'      => $idrTipo,
+                                'idrante_tipo_id'   => $idrTipoId,
                                 'idrante_lunghezza' => $idrLen,
                                 'idrante_sopra_suolo'=> $sopra,
                                 'idrante_sotto_suolo'=> $sotto,
@@ -168,17 +161,11 @@ class DocxPresidiImporter
                         }
                         $note = $r['note'] ?? null;
                         $portaTipo = ImportaPresidi::normalizePortaTipo($r['porta_tipo'] ?? null);
+                        $portaTipoId = ImportaPresidi::resolveTipoPresidioId('Porta', $portaTipo);
                         $flag1 = !empty($r['anomalia_maniglione'] ?? null);
                         $flag2 = !empty($r['anomalia_molla'] ?? null);
                         $flag3 = !empty($r['anomalia_numerazione'] ?? null);
                         $contratto = $r['tipo_contratto'] ?? $contratto;
-
-                        if ($portaTipo) {
-                            TipoPresidio::firstOrCreate([
-                                'categoria' => 'Porta',
-                                'nome' => mb_strtoupper(trim((string) $portaTipo)),
-                            ]);
-                        }
 
                         $sedeId = $this->resolveSedeId();
                         Presidio::updateOrCreate(
@@ -191,7 +178,7 @@ class DocxPresidiImporter
                             [
                                 'ubicazione'        => $ubic,
                                 'tipo_contratto'    => $contratto,
-                                'porta_tipo'        => $portaTipo,
+                                'porta_tipo_id'     => $portaTipoId,
                                 'flag_anomalia1'    => $flag1,
                                 'flag_anomalia2'    => $flag2,
                                 'flag_anomalia3'    => $flag3,

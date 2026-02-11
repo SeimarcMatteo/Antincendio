@@ -54,8 +54,8 @@ class GestionePresidi extends Component
         'tipoContratto' => 'required|string|max:255',
         'categoria' => 'required|in:Estintore,Idrante,Porta',
         'tipoEstintore' => 'required_if:categoria,Estintore|exists:tipi_estintori,id',
-        'idranteTipo' => 'required_if:categoria,Idrante',
-        'portaTipo' => 'required_if:categoria,Porta',
+        'idranteTipo' => 'required_if:categoria,Idrante|exists:tipi_presidio,id',
+        'portaTipo' => 'required_if:categoria,Porta|exists:tipi_presidio,id',
         'anomalia1' => 'nullable|boolean',
         'anomalia2' => 'nullable|boolean',
         'anomalia3' => 'nullable|boolean',
@@ -131,6 +131,8 @@ public function abilitaModifica($id)
           }
       }
       
+    $row['idrante_tipo_id'] = $p->idrante_tipo_id;
+    $row['porta_tipo_id'] = $p->porta_tipo_id;
     $this->presidiData[$id] = $row;
 }
 public function disattiva($id)
@@ -257,7 +259,7 @@ public function ricalcolaDate(int $id): void
     }
     public function getPresidiProperty()
     {
-        return Presidio::with('tipoEstintore.colore')
+        return Presidio::with('tipoEstintore.colore', 'idranteTipoRef', 'portaTipoRef')
             ->where('cliente_id', $this->cliente->id)
             ->where('sede_id', $this->sedeId)
             ->where('categoria', $this->categoriaAttiva)
@@ -298,20 +300,6 @@ public function ricalcolaDate(int $id): void
             Log::info('Date calcolate', $date);
         }
 
-        if ($categoria === 'Idrante' && !empty($this->idranteTipo)) {
-            TipoPresidio::firstOrCreate([
-                'categoria' => 'Idrante',
-                'nome' => mb_strtoupper(trim((string) $this->idranteTipo)),
-            ]);
-        }
-
-        if ($categoria === 'Porta' && !empty($this->portaTipo)) {
-            TipoPresidio::firstOrCreate([
-                'categoria' => 'Porta',
-                'nome' => mb_strtoupper(trim((string) $this->portaTipo)),
-            ]);
-        }
-
         $presidio = new Presidio([
             'cliente_id' => $this->clienteId,
             'sede_id' => $this->sedeId,
@@ -329,11 +317,11 @@ public function ricalcolaDate(int $id): void
             'data_ultima_revisione' => $categoria === 'Estintore' ? $this->dataUltimaRevisione : null,
             'flag_preventivo' => $this->flagPreventivo,
             'descrizione' => $this->descrizione,
-            'idrante_tipo' => $categoria === 'Idrante' ? mb_strtoupper(trim((string) $this->idranteTipo)) : null,
+            'idrante_tipo_id' => $categoria === 'Idrante' ? $this->idranteTipo : null,
             'idrante_lunghezza' => $categoria === 'Idrante' ? $this->idranteLunghezza : null,
             'idrante_sopra_suolo' => $categoria === 'Idrante' ? (bool) $this->idranteSopraSuolo : false,
             'idrante_sotto_suolo' => $categoria === 'Idrante' ? (bool) $this->idranteSottoSuolo : false,
-            'porta_tipo' => $categoria === 'Porta' ? mb_strtoupper(trim((string) $this->portaTipo)) : null,
+            'porta_tipo_id' => $categoria === 'Porta' ? $this->portaTipo : null,
                // NUOVI CAMPI (valorizzali solo se isAcquisto)
         'data_acquisto'     => $this->isAcquisto ? $this->dataAcquisto : null,
         'scadenza_presidio' => $this->isAcquisto ? $this->scadenzaPresidio : null,
@@ -421,7 +409,7 @@ public function ricalcolaDate(int $id): void
 
     public function render()
 {
-    $presidi = Presidio::with('tipoEstintore.colore')
+    $presidi = Presidio::with('tipoEstintore.colore', 'idranteTipoRef', 'portaTipoRef')
         ->where('cliente_id', $this->clienteId)->where('attivo','1')->where('categoria',$this->categoriaAttiva)
         ->when($this->sedeId && $this->sedeId !== 'principale', fn($q) => $q->where('sede_id', $this->sedeId))
         ->orderBy('categoria')
@@ -434,8 +422,8 @@ public function ricalcolaDate(int $id): void
     $clienti = Cliente::all();
     $sedi = Sede::where('cliente_id',$this->clienteId)->get();
     $tipiEstintori = TipoEstintore::orderBy('sigla')->get();
-    $tipiIdranti = TipoPresidio::where('categoria', 'Idrante')->orderBy('nome')->pluck('nome')->all();
-    $tipiPorte = TipoPresidio::where('categoria', 'Porta')->orderBy('nome')->pluck('nome')->all();
+    $tipiIdranti = TipoPresidio::where('categoria', 'Idrante')->orderBy('nome')->pluck('nome', 'id')->all();
+    $tipiPorte = TipoPresidio::where('categoria', 'Porta')->orderBy('nome')->pluck('nome', 'id')->all();
   
     
 

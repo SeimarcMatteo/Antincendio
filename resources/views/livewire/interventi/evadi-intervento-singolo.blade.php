@@ -106,10 +106,10 @@
             @if(($nuovoPresidio['categoria'] ?? '') === 'Idrante')
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Tipo Idrante</label>
-                    <select wire:model.defer="nuovoPresidio.idrante_tipo" class="w-full border-gray-300 rounded px-2 py-1">
+                    <select wire:model.defer="nuovoPresidio.idrante_tipo_id" class="w-full border-gray-300 rounded px-2 py-1">
                         <option value="">Seleziona tipo</option>
-                        @foreach($tipiIdranti as $tipo)
-                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @foreach($tipiIdranti as $id => $tipo)
+                            <option value="{{ $id }}">{{ $tipo }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -118,10 +118,10 @@
             @if(($nuovoPresidio['categoria'] ?? '') === 'Porta')
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Tipo Porta</label>
-                    <select wire:model.defer="nuovoPresidio.porta_tipo" class="w-full border-gray-300 rounded px-2 py-1">
+                    <select wire:model.defer="nuovoPresidio.porta_tipo_id" class="w-full border-gray-300 rounded px-2 py-1">
                         <option value="">Seleziona tipo</option>
-                        @foreach($tipiPorte as $tipo)
-                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                        @foreach($tipiPorte as $id => $tipo)
+                            <option value="{{ $id }}">{{ $tipo }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -275,17 +275,17 @@
                                                                 </div>
                                                             @endif
                                                         @elseif($cat === 'Idrante')
-                                                            <select wire:model="input.{{ $pi->id }}.nuovo_idrante_tipo" class="w-full border-gray-300 rounded px-2 py-1">
+                                                            <select wire:model="input.{{ $pi->id }}.nuovo_idrante_tipo_id" class="w-full border-gray-300 rounded px-2 py-1">
                                                                 <option value="">Tipo Idrante</option>
-                                                                @foreach ($tipiIdranti as $tipo)
-                                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                                @foreach ($tipiIdranti as $id => $tipo)
+                                                                    <option value="{{ $id }}">{{ $tipo }}</option>
                                                                 @endforeach
                                                             </select>
                                                         @elseif($cat === 'Porta')
-                                                            <select wire:model="input.{{ $pi->id }}.nuovo_porta_tipo" class="w-full border-gray-300 rounded px-2 py-1">
+                                                            <select wire:model="input.{{ $pi->id }}.nuovo_porta_tipo_id" class="w-full border-gray-300 rounded px-2 py-1">
                                                                 <option value="">Tipo Porta</option>
-                                                                @foreach ($tipiPorte as $tipo)
-                                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                                @foreach ($tipiPorte as $id => $tipo)
+                                                                    <option value="{{ $id }}">{{ $tipo }}</option>
                                                                 @endforeach
                                                             </select>
                                                         @endif
@@ -312,9 +312,9 @@
                                                 @if($cat === 'Estintore')
                                                     <span><strong>Tipo Estintore:</strong> {{ $pi->presidio->tipoEstintore?->sigla }} – {{ $pi->presidio->tipoEstintore?->descrizione }}</span>
                                                 @elseif($cat === 'Idrante')
-                                                    <span><strong>Tipo Idrante:</strong> {{ $pi->presidio->idrante_tipo ?? '—' }}</span>
+                                                    <span><strong>Tipo Idrante:</strong> {{ $pi->presidio->idranteTipoRef?->nome ?? $pi->presidio->idrante_tipo ?? '—' }}</span>
                                                 @elseif($cat === 'Porta')
-                                                    <span><strong>Tipo Porta:</strong> {{ $pi->presidio->porta_tipo ?? '—' }}</span>
+                                                    <span><strong>Tipo Porta:</strong> {{ $pi->presidio->portaTipoRef?->nome ?? $pi->presidio->porta_tipo ?? '—' }}</span>
                                                 @else
                                                     <span>—</span>
                                                 @endif
@@ -374,20 +374,20 @@
                                                     @elseif($catEdit === 'Idrante')
                                                         <div>
                                                             <label class="text-xs text-gray-600">Tipo Idrante</label>
-                                                            <select wire:model.defer="editPresidio.{{ $pi->id }}.idrante_tipo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                            <select wire:model.defer="editPresidio.{{ $pi->id }}.idrante_tipo_id" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
                                                                 <option value="">Seleziona tipo</option>
-                                                                @foreach($tipiIdranti as $tipo)
-                                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                                @foreach($tipiIdranti as $id => $tipo)
+                                                                    <option value="{{ $id }}">{{ $tipo }}</option>
                                                                 @endforeach
                                                             </select>
                                                         </div>
                                                     @elseif($catEdit === 'Porta')
                                                         <div>
                                                             <label class="text-xs text-gray-600">Tipo Porta</label>
-                                                            <select wire:model.defer="editPresidio.{{ $pi->id }}.porta_tipo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                                            <select wire:model.defer="editPresidio.{{ $pi->id }}.porta_tipo_id" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
                                                                 <option value="">Seleziona tipo</option>
-                                                                @foreach($tipiPorte as $tipo)
-                                                                    <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                                                @foreach($tipiPorte as $id => $tipo)
+                                                                    <option value="{{ $id }}">{{ $tipo }}</option>
                                                                 @endforeach
                                                             </select>
                                                         </div>
@@ -469,9 +469,9 @@
                         @if($cat === 'Estintore')
                             <strong>Tipo Estintore:</strong> {{ $pi->presidio->tipoEstintore?->sigla }} – {{ $pi->presidio->tipoEstintore?->descrizione }}
                         @elseif($cat === 'Idrante')
-                            <strong>Tipo Idrante:</strong> {{ $pi->presidio->idrante_tipo ?? '—' }}
+                            <strong>Tipo Idrante:</strong> {{ $pi->presidio->idranteTipoRef?->nome ?? $pi->presidio->idrante_tipo ?? '—' }}
                         @elseif($cat === 'Porta')
-                            <strong>Tipo Porta:</strong> {{ $pi->presidio->porta_tipo ?? '—' }}
+                            <strong>Tipo Porta:</strong> {{ $pi->presidio->portaTipoRef?->nome ?? $pi->presidio->porta_tipo ?? '—' }}
                         @else
                             <strong>Tipo:</strong> —
                         @endif
@@ -545,17 +545,17 @@
                                         </div>
                                         <input type="date" wire:model="input.{{ $pi->id }}.nuova_data_ultima_revisione" wire:change="aggiornaPreviewSostituzione({{ $pi->id }})" class="w-full text-sm border-gray-300 rounded px-2 py-1">
                                     @elseif($cat === 'Idrante')
-                                        <select wire:model="input.{{ $pi->id }}.nuovo_idrante_tipo" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                        <select wire:model="input.{{ $pi->id }}.nuovo_idrante_tipo_id" class="w-full text-sm border-gray-300 rounded px-2 py-1">
                                             <option value="">Tipo Idrante</option>
-                                            @foreach ($tipiIdranti as $tipo)
-                                                <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                            @foreach ($tipiIdranti as $id => $tipo)
+                                                <option value="{{ $id }}">{{ $tipo }}</option>
                                             @endforeach
                                         </select>
                                     @elseif($cat === 'Porta')
-                                        <select wire:model="input.{{ $pi->id }}.nuovo_porta_tipo" class="w-full text-sm border-gray-300 rounded px-2 py-1">
+                                        <select wire:model="input.{{ $pi->id }}.nuovo_porta_tipo_id" class="w-full text-sm border-gray-300 rounded px-2 py-1">
                                             <option value="">Tipo Porta</option>
-                                            @foreach ($tipiPorte as $tipo)
-                                                <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                            @foreach ($tipiPorte as $id => $tipo)
+                                                <option value="{{ $id }}">{{ $tipo }}</option>
                                             @endforeach
                                         </select>
                                     @endif
@@ -638,20 +638,20 @@
                             @elseif($catEdit === 'Idrante')
                                 <div>
                                     <label class="text-xs text-gray-600">Tipo Idrante</label>
-                                    <select wire:model.defer="editPresidio.{{ $pi->id }}.idrante_tipo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                    <select wire:model.defer="editPresidio.{{ $pi->id }}.idrante_tipo_id" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
                                         <option value="">Seleziona tipo</option>
-                                        @foreach($tipiIdranti as $tipo)
-                                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                        @foreach($tipiIdranti as $id => $tipo)
+                                            <option value="{{ $id }}">{{ $tipo }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                             @elseif($catEdit === 'Porta')
                                 <div>
                                     <label class="text-xs text-gray-600">Tipo Porta</label>
-                                    <select wire:model.defer="editPresidio.{{ $pi->id }}.porta_tipo" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
+                                    <select wire:model.defer="editPresidio.{{ $pi->id }}.porta_tipo_id" class="w-full border-gray-300 rounded px-2 py-1 text-sm">
                                         <option value="">Seleziona tipo</option>
-                                        @foreach($tipiPorte as $tipo)
-                                            <option value="{{ $tipo }}">{{ $tipo }}</option>
+                                        @foreach($tipiPorte as $id => $tipo)
+                                            <option value="{{ $id }}">{{ $tipo }}</option>
                                         @endforeach
                                     </select>
                                 </div>

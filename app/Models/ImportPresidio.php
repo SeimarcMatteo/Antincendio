@@ -13,7 +13,7 @@ class ImportPresidio extends Model
     protected $fillable = [
         'cliente_id', 'sede_id', 'categoria', 'progressivo', 'progressivo_num', 'progressivo_suffix',
         'ubicazione', 'tipo_contratto', 'tipo_estintore', 'tipo_estintore_id',
-        'idrante_tipo','idrante_lunghezza','idrante_sopra_suolo','idrante_sotto_suolo','porta_tipo',
+        'idrante_tipo','idrante_tipo_id','idrante_lunghezza','idrante_sopra_suolo','idrante_sotto_suolo','porta_tipo','porta_tipo_id',
         'flag_anomalia1', 'flag_anomalia2', 'flag_anomalia3',
         'note', 'data_serbatoio', 'marca_serbatoio', 'data_revisione', 'data_collaudo',
         'data_fine_vita', 'data_sostituzione', 'data_acquisto', 'scadenza_presidio','data_ultima_revisione'
@@ -31,6 +31,8 @@ class ImportPresidio extends Model
         'idrante_sopra_suolo' => 'boolean',
         'idrante_sotto_suolo' => 'boolean',
         'progressivo_num' => 'integer',
+        'idrante_tipo_id' => 'integer',
+        'porta_tipo_id' => 'integer',
     ];
 
     protected static function booted()

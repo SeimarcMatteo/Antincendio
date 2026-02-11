@@ -459,6 +459,45 @@ public function ricalcola(string $scope, int $index): void
         return $fallback !== '' ? $fallback : null;
     }
 
+    private static function normalizeTipoKey(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') return null;
+        $value = mb_strtoupper($value);
+        return preg_replace('/[^A-Z0-9]/u', '', $value);
+    }
+
+    public static function resolveTipoPresidioId(string $categoria, ?string $label): ?int
+    {
+        $label = trim((string) $label);
+        if ($label === '') {
+            return null;
+        }
+        $needle = self::normalizeTipoKey($label);
+        if (!$needle) {
+            return null;
+        }
+
+        static $cache = [];
+        if (!isset($cache[$categoria])) {
+            $cache[$categoria] = TipoPresidio::where('categoria', $categoria)->get();
+        }
+
+        foreach ($cache[$categoria] as $item) {
+            if (self::normalizeTipoKey($item->nome) === $needle) {
+                return $item->id;
+            }
+        }
+
+        $tipo = TipoPresidio::create([
+            'categoria' => $categoria,
+            'nome' => $label,
+        ]);
+        $cache[$categoria]->push($tipo);
+
+        return $tipo->id;
+    }
+
     public static function normalizePortaTipo(?string $raw): ?string
     {
         $raw = trim((string) $raw);
@@ -683,6 +722,7 @@ public function ricalcola(string $scope, int $index): void
                         $flag2 = !empty($r['anomalia_lancia'] ?? null);
                         $flag3 = !empty($r['anomalia_lastra'] ?? null);
                         $idrTipo = self::normalizeIdranteTipo($idrTipo, $idrLen, $sopra, $sotto, $joinedUp);
+                        $idrTipoId = self::resolveTipoPresidioId('Idrante', $idrTipo);
 
                         $this->anteprima[] = [
                             'categoria'         => 'Idrante',
@@ -693,7 +733,7 @@ public function ricalcola(string $scope, int $index): void
                             'tipo_contratto'    => $contratto,
                             'tipo_estintore'    => null,
                             'tipo_estintore_id' => null,
-                            'idrante_tipo'      => $idrTipo,
+                            'idrante_tipo_id'   => $idrTipoId,
                             'idrante_lunghezza' => $idrLen,
                             'idrante_sopra_suolo' => $sopra,
                             'idrante_sotto_suolo' => $sotto,
@@ -713,6 +753,7 @@ public function ricalcola(string $scope, int $index): void
                     if ($tableType === 'porte') {
                         $note = $r['note'] ?? null;
                         $portaTipo = self::normalizePortaTipo($r['porta_tipo'] ?? null);
+                        $portaTipoId = self::resolveTipoPresidioId('Porta', $portaTipo);
                         $flag1 = !empty($r['anomalia_maniglione'] ?? null);
                         $flag2 = !empty($r['anomalia_molla'] ?? null);
                         $flag3 = !empty($r['anomalia_numerazione'] ?? null);
@@ -727,7 +768,7 @@ public function ricalcola(string $scope, int $index): void
                             'tipo_contratto'    => $contratto,
                             'tipo_estintore'    => null,
                             'tipo_estintore_id' => null,
-                            'porta_tipo'        => $portaTipo,
+                            'porta_tipo_id'     => $portaTipoId,
                             'note'              => $note,
                             'flag_anomalia1'    => $flag1,
                             'flag_anomalia2'    => $flag2,
@@ -927,17 +968,11 @@ public function ricalcola(string $scope, int $index): void
         }
 
         foreach ($import as $p) {
-            if ($p->categoria === 'Idrante' && !empty($p->idrante_tipo)) {
-                TipoPresidio::firstOrCreate([
-                    'categoria' => 'Idrante',
-                    'nome' => mb_strtoupper(trim((string) $p->idrante_tipo)),
-                ]);
+            if ($p->categoria === 'Idrante' && empty($p->idrante_tipo_id) && !empty($p->idrante_tipo)) {
+                $p->idrante_tipo_id = self::resolveTipoPresidioId('Idrante', $p->idrante_tipo);
             }
-            if ($p->categoria === 'Porta' && !empty($p->porta_tipo)) {
-                TipoPresidio::firstOrCreate([
-                    'categoria' => 'Porta',
-                    'nome' => mb_strtoupper(trim((string) $p->porta_tipo)),
-                ]);
+            if ($p->categoria === 'Porta' && empty($p->porta_tipo_id) && !empty($p->porta_tipo)) {
+                $p->porta_tipo_id = self::resolveTipoPresidioId('Porta', $p->porta_tipo);
             }
 
             Presidio::updateOrCreate(
@@ -952,7 +987,7 @@ public function ricalcola(string $scope, int $index): void
                     'flag_anomalia1','flag_anomalia2','flag_anomalia3','note','data_acquisto','scadenza_presidio', 
                     'data_serbatoio','data_revisione','data_collaudo',
                     'data_fine_vita','data_sostituzione','data_ultima_revisione','marca_serbatoio',
-                    'idrante_tipo','idrante_lunghezza','idrante_sopra_suolo','idrante_sotto_suolo','porta_tipo',
+                    'idrante_tipo_id','idrante_lunghezza','idrante_sopra_suolo','idrante_sotto_suolo','porta_tipo_id',
                 ])
             );
 
