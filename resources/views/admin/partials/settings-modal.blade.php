@@ -41,6 +41,11 @@
               <i class="fa fa-palette mr-1"></i> Colori Estintori
             </button>
             <button class="w-full text-left px-3 py-2 rounded"
+                    :class="tab==='codici-articolo' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'"
+                    @click="tab='codici-articolo'">
+              <i class="fa fa-barcode mr-1"></i> Codici Articolo
+            </button>
+            <button class="w-full text-left px-3 py-2 rounded"
                     :class="tab==='tipi-presidio' ? 'bg-red-600 text-white' : 'hover:bg-gray-100'"
                     @click="tab='tipi-presidio'">
               <i class="fa fa-list mr-1"></i> Tipi Idranti/Porte
@@ -61,6 +66,11 @@
             Colori Estintori
           </button>
           <button class="px-3 py-1.5 rounded text-sm whitespace-nowrap"
+                  :class="tab==='codici-articolo' ? 'bg-red-600 text-white' : 'bg-gray-100'"
+                  @click="tab='codici-articolo'">
+            Codici Articolo
+          </button>
+          <button class="px-3 py-1.5 rounded text-sm whitespace-nowrap"
                   :class="tab==='utenti' ? 'bg-red-600 text-white' : 'bg-gray-100'"
                   @click="tab='utenti'">
             Gestione Utenti
@@ -71,6 +81,9 @@
         <section class="flex-1 min-h-0 overflow-y-auto p-4">
           <div x-show="tab==='colori'" x-transition>
             @livewire('tipi-estintori.imposta-colore', [], key('settings-colori'))
+          </div>
+          <div x-show="tab==='codici-articolo'" x-transition>
+            @livewire('impostazioni.codici-articolo', [], key('settings-codici-articolo'))
           </div>
           <div x-show="tab==='tipi-presidio'" x-transition>
             @livewire('tipi-presidio.gestione-tipi', [], key('settings-tipi-presidio'))

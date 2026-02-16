@@ -4,6 +4,7 @@
 @php
   $tabs = [
     'colori' => ['label' => 'Colori Estintori', 'icon' => 'fa-palette'],
+    'codici-articolo' => ['label' => 'Codici Articolo', 'icon' => 'fa-barcode'],
     'tipi-presidio' => ['label' => 'Tipi Idranti/Porte', 'icon' => 'fa-list'],
     'anomalie-prezzi' => ['label' => 'Prezzi Anomalie', 'icon' => 'fa-exclamation-triangle'],
     'utenti' => ['label' => 'Gestione Utenti', 'icon' => 'fa-users'],
@@ -34,6 +35,8 @@
     <main class="flex-1 p-4">
       @if($tab === 'colori')
         @livewire('tipi-estintori.imposta-colore', [], key('settings-colori-page'))
+      @elseif($tab === 'codici-articolo')
+        @livewire('impostazioni.codici-articolo', [], key('settings-codici-articolo-page'))
       @elseif($tab === 'tipi-presidio')
         @livewire('tipi-presidio.gestione-tipi', [], key('settings-tipi-presidio-page'))
       @elseif($tab === 'anomalie-prezzi')
