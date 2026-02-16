@@ -35,6 +35,20 @@ class ImpostaPrezzi extends Component
         $this->dispatch('toast', type: 'success', message: 'Anomalia aggiornata.');
     }
 
+    public function updatedPrezzi($value, $key): void
+    {
+        $id = (int) $key;
+        if ($id <= 0) {
+            return;
+        }
+
+        // normalizza in tempo reale input più comuni (virgola italiana)
+        $raw = trim((string) $value);
+        $normalized = str_replace(',', '.', $raw);
+        $this->prezzi[(string) $id] = $normalized;
+        unset($this->invalidPrezzi[(string) $id]);
+    }
+
     public function salvaRiga(int $anomaliaId): void
     {
         if (!$this->hasPrezzoColumn) {
@@ -107,9 +121,9 @@ class ImpostaPrezzi extends Component
         }
 
         foreach ($query->get() as $anomalia) {
-            $id = (int) $anomalia->id;
-            $this->attive[$id] = (bool) $anomalia->attiva;
-            $this->prezzi[$id] = number_format((float) ($anomalia->prezzo ?? 0), 2, '.', '');
+            $key = (string) $anomalia->id;
+            $this->attive[$key] = (bool) $anomalia->attiva;
+            $this->prezzi[$key] = number_format((float) ($anomalia->prezzo ?? 0), 2, '.', '');
         }
     }
 
@@ -121,27 +135,41 @@ class ImpostaPrezzi extends Component
         }
 
         $payload = [
-            'attiva' => (bool) ($this->attive[$anomaliaId] ?? false),
+            'attiva' => (bool) $this->valueById($this->attive, $anomaliaId, false),
         ];
 
         if ($this->hasPrezzoColumn) {
-            $parsedPrezzo = $this->parsePrezzo($this->prezzi[$anomaliaId] ?? null);
+            $parsedPrezzo = $this->parsePrezzo($this->valueById($this->prezzi, $anomaliaId));
             if ($parsedPrezzo === null) {
-                $this->invalidPrezzi[$anomaliaId] = true;
+                $this->invalidPrezzi[(string) $anomaliaId] = true;
                 return false;
             }
-            unset($this->invalidPrezzi[$anomaliaId]);
+            unset($this->invalidPrezzi[(string) $anomaliaId]);
             $payload['prezzo'] = $parsedPrezzo;
         }
 
         $anomalia->update($payload);
 
-        $this->attive[$anomaliaId] = (bool) $anomalia->attiva;
+        $this->attive[(string) $anomaliaId] = (bool) $anomalia->attiva;
         if ($this->hasPrezzoColumn) {
-            $this->prezzi[$anomaliaId] = number_format((float) ($anomalia->prezzo ?? 0), 2, '.', '');
+            $this->prezzi[(string) $anomaliaId] = number_format((float) ($anomalia->prezzo ?? 0), 2, '.', '');
         }
 
         return true;
+    }
+
+    private function valueById(array $source, int $id, $default = null)
+    {
+        if (array_key_exists($id, $source)) {
+            return $source[$id];
+        }
+
+        $key = (string) $id;
+        if (array_key_exists($key, $source)) {
+            return $source[$key];
+        }
+
+        return $default;
     }
 
     private function parsePrezzo($raw): ?float

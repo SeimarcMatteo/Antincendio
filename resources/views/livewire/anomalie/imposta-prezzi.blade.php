@@ -40,9 +40,9 @@
                                 </td>
                                 <td class="px-3 py-2 text-right">
                                     <input type="text"
-                                           wire:model.defer="prezzi.{{ $anomalia->id }}"
+                                           wire:model.live.debounce.250ms="prezzi.{{ $anomalia->id }}"
                                            wire:blur="salvaRiga({{ $anomalia->id }})"
-                                           wire:keydown.enter="salvaRiga({{ $anomalia->id }})"
+                                           wire:keydown.enter.prevent="salvaRiga({{ $anomalia->id }})"
                                            class="w-28 border rounded px-2 py-1 text-right {{ !empty($invalidPrezzi[$anomalia->id] ?? null) ? 'border-red-500 bg-red-50' : 'border-gray-300' }}"
                                            placeholder="0,00">
                                 </td>
