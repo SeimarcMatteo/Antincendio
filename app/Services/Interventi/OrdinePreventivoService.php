@@ -413,8 +413,14 @@ class OrdinePreventivoService
         $categoria = trim($categoria);
         if ($categoria === 'Estintore') {
             $tipo = $presidio->tipoEstintore;
-            $codice = $tipo?->codice_articolo_fatturazione ?: $tipo?->sigla;
+            $isFullService = $this->isFullServiceContratto($presidio->tipo_contratto ?? null);
+            $codiceBase = $tipo?->codice_articolo_fatturazione ?: $tipo?->sigla;
+            $codiceFull = $tipo?->codice_articolo_fatturazione_full;
+            $codice = $isFullService && !empty($codiceFull) ? $codiceFull : $codiceBase;
             $descr = trim((string) (($tipo?->sigla ?? '') . ' ' . ($tipo?->descrizione ?? '')));
+            if ($isFullService) {
+                $descr = trim($descr . ' [FULL SERVICE]');
+            }
             return [$this->normalizeCode($codice), $descr ?: 'Estintore'];
         }
 
@@ -439,5 +445,28 @@ class OrdinePreventivoService
     {
         $code = mb_strtoupper(trim((string) $value));
         return $code === '' ? null : $code;
+    }
+
+    private function isFullServiceContratto($tipoContratto): bool
+    {
+        $value = mb_strtoupper(trim((string) $tipoContratto));
+        if ($value === '') {
+            return false;
+        }
+
+        $normalized = preg_replace('/\s+/', ' ', $value);
+        if (!is_string($normalized) || $normalized === '') {
+            return false;
+        }
+
+        if (str_contains($normalized, 'FULL SERVICE')) {
+            return true;
+        }
+
+        if (str_contains($normalized, 'FULLSERVICE')) {
+            return true;
+        }
+
+        return (bool) preg_match('/\bFULL\b/u', $normalized);
     }
 }

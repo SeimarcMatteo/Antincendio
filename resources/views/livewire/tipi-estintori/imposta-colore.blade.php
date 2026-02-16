@@ -5,16 +5,16 @@
 
     <div class="bg-white shadow rounded border p-4">
         {{-- Intestazioni --}}
-        <div class="grid grid-cols-2 gap-4 border-b pb-2 mb-2 text-sm font-semibold text-gray-600">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 border-b pb-2 mb-2 text-sm font-semibold text-gray-600">
             <div>Tipologia estintore</div>
+            <div>Codice articolo (Noleggio)</div>
+            <div>Codice articolo (FULL SERVICE)</div>
             <div>Colore</div>
         </div>
 
         {{-- Righe tipologie --}}
         @forelse ($tipi as $tipo)
-            
-
-            <div class="grid grid-cols-2 gap-4 items-center py-2 border-b last:border-b-0" wire:key="tipo-{{ $tipo->id }}">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center py-2 border-b last:border-b-0" wire:key="tipo-{{ $tipo->id }}">
                 {{-- Colonna sinistra: nome tipo + pallina colore attuale --}}
                 <div class="text-sm text-gray-800 flex items-center space-x-2">
                     @if ($tipo->colore)
@@ -24,6 +24,26 @@
                         <span class="w-3 h-3 rounded-full border border-gray-300 bg-white"></span>
                     @endif
                     <span>{{ $tipo->descrizione }}</span>
+                </div>
+
+                <div>
+                    <input
+                        type="text"
+                        wire:model.lazy="codiceArticolo.{{ $tipo->id }}"
+                        class="input input-bordered text-sm w-full"
+                        placeholder="Codice noleggio">
+                </div>
+
+                <div>
+                    @if($hasCodiceArticoloFull)
+                        <input
+                            type="text"
+                            wire:model.lazy="codiceArticoloFull.{{ $tipo->id }}"
+                            class="input input-bordered text-sm w-full"
+                            placeholder="Codice FULL SERVICE">
+                    @else
+                        <div class="text-xs text-gray-400">Disponibile dopo migrazione DB</div>
+                    @endif
                 </div>
 
                 {{-- Colonna destra: select colore --}}
