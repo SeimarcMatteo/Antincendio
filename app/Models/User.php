@@ -20,6 +20,7 @@ class User extends Authenticatable
         'email',
         'password',
         'profile_image',
+        'firma_tecnico_base64',
         'colore_ruolo',
     ];
 
@@ -70,6 +71,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Intervento::class, 'intervento_tecnico')
             ->using(InterventoTecnico::class)
             ->withPivot('started_at', 'ended_at', 'scheduled_start_at', 'scheduled_end_at');
+    }
+
+    public function interventiChiusi()
+    {
+        return $this->hasMany(Intervento::class, 'closed_by_user_id');
     }
 
 

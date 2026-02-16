@@ -1001,12 +1001,16 @@ public function salvaNuovoPresidio()
             // Se tutti i presidi sono verificati, completa l'intervento con durata calcolata dai timer
             $durataEffettiva = $this->calcolaDurataEffettivaTotaleIntervento();
             $this->durataEffettiva = $durataEffettiva;
-            $this->intervento->update([
+            $payloadUpdate = [
                 'stato' => 'Completato',
                 'durata_effettiva' => $durataEffettiva,
                 'pagamento_metodo' => $this->intervento->pagamento_metodo,
                 'pagamento_importo' => $this->intervento->pagamento_importo,
-            ]);
+            ];
+            if (Schema::hasColumn('interventi', 'closed_by_user_id')) {
+                $payloadUpdate['closed_by_user_id'] = auth()->id();
+            }
+            $this->intervento->update($payloadUpdate);
             $this->accodaMailRapportinoInterno();
             $this->messaggioSuccesso ='Intervento evaso correttamente. Apertura rapportino in corso...';
 

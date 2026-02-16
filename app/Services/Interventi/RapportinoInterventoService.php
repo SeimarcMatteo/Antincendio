@@ -28,6 +28,7 @@ class RapportinoInterventoService
     public function buildData(Intervento $intervento): array
     {
         $intervento->loadMissing($this->relations());
+        $tecnicoChiusura = $this->resolveTecnicoChiusura($intervento);
 
         $ordiniSvc = app(OrdinePreventivoService::class);
 
@@ -68,6 +69,7 @@ class RapportinoInterventoService
 
         return [
             'intervento' => $intervento,
+            'tecnicoChiusura' => $tecnicoChiusura,
             'ordinePreventivo' => $ordinePreventivo,
             'righeIntervento' => $righeIntervento,
             'confrontoOrdine' => $confrontoOrdine,
@@ -120,6 +122,7 @@ class RapportinoInterventoService
             'cliente',
             'sede',
             'tecnici',
+            'tecnicoChiusura',
             'presidiIntervento.presidio.tipoEstintore',
             'presidiIntervento.presidio.idranteTipoRef',
             'presidiIntervento.presidio.portaTipoRef',
@@ -130,6 +133,24 @@ class RapportinoInterventoService
         }
 
         return $relations;
+    }
+
+    private function resolveTecnicoChiusura(Intervento $intervento): ?\App\Models\User
+    {
+        if ($intervento->relationLoaded('tecnicoChiusura') && $intervento->tecnicoChiusura) {
+            return $intervento->tecnicoChiusura;
+        }
+
+        if ($intervento->relationLoaded('tecnici') && $intervento->tecnici->isNotEmpty()) {
+            $ordered = $intervento->tecnici->sortByDesc(function ($tecnico) {
+                $pivotEnd = data_get($tecnico, 'pivot.ended_at');
+                return $pivotEnd ? strtotime((string) $pivotEnd) : 0;
+            });
+
+            return $ordered->first();
+        }
+
+        return null;
     }
 
     private function extractPrezziExtraManuali(Intervento $intervento): array

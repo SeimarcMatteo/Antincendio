@@ -15,6 +15,7 @@ class Intervento extends Model
         'durata_minuti',
         'durata_effettiva',
         'stato',
+        'closed_by_user_id',
         'zona',
         'note',
         'pagamento_metodo',
@@ -41,6 +42,11 @@ class Intervento extends Model
     public function sede()
     {
         return $this->belongsTo(Sede::class);
+    }
+
+    public function tecnicoChiusura()
+    {
+        return $this->belongsTo(User::class, 'closed_by_user_id');
     }
 
     public function tecnici()

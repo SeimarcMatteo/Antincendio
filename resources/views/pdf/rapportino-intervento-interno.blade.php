@@ -372,5 +372,19 @@
         @endif
     </div>
 
+    <div class="firma">
+        <label>
+            Firma Tecnico Chiusura
+            @if(!empty($tecnicoChiusura?->name))
+                - {{ $tecnicoChiusura->name }}
+            @endif
+        </label>
+        @if(!empty($tecnicoChiusura?->firma_tecnico_base64))
+            <img src="{{ $tecnicoChiusura->firma_tecnico_base64 }}" alt="Firma Tecnico">
+        @else
+            <p><em>Firma tecnico non disponibile</em></p>
+        @endif
+    </div>
+
 </body>
 </html>
