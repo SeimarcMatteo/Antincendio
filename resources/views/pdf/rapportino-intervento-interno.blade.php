@@ -4,20 +4,25 @@
     <meta charset="UTF-8">
     <style>
         @page { margin: 30px; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 13px; color: #222; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #222; line-height: 1.35; }
         header { border-bottom: 3px solid #b30000; margin-bottom: 20px; padding-bottom: 10px; }
         header h1 { color: #b30000; font-size: 20px; margin: 0; }
         header p { margin: 0; font-size: 12px; }
-        h2 { color: #b30000; border-bottom: 1px solid #ddd; padding-bottom: 2px; margin-top: 30px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px; }
+        .section { margin-top: 14px; page-break-inside: avoid; }
+        .section.breakable { page-break-inside: auto; }
+        h2 { color: #b30000; border-bottom: 1px solid #ddd; padding-bottom: 2px; margin: 0 0 8px 0; page-break-after: avoid; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 0; }
         th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 12px; }
-        th { background-color: #f8f8f8; font-weight: bold; text-transform: uppercase; }
-        .note { border: 1px dashed #aaa; padding: 10px; background-color: #fefefe; }
+        th { background-color: #f4f4f4; font-weight: bold; text-transform: uppercase; }
+        tr { page-break-inside: avoid; }
+        thead { display: table-header-group; }
+        .note { border: 1px dashed #aaa; padding: 10px; background-color: #fefefe; page-break-inside: avoid; }
         .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; background: #111; color: #fff; font-size: 11px; }
-        .firma { margin-top: 40px; text-align: center; }
+        .firma-wrap { margin-top: 18px; page-break-inside: avoid; }
+        .firma { margin-top: 12px; text-align: center; }
         .firma label { font-weight: bold; display: block; margin-bottom: 10px; color: #444; }
         .firma img { max-width: 300px; border: 1px solid #ccc; }
-        .dati-cliente { line-height: 1.4; }
+        .dati-cliente { line-height: 1.4; page-break-inside: avoid; }
     </style>
 </head>
 <body>
@@ -26,20 +31,23 @@
         <p>Via G. Ricci Curbastro 54/56 – 48020 S.Agata sul Santerno (RA)</p>
     </header>
 
-    <h2>Rapportino di Intervento</h2>
-    <div class="badge">USO INTERNO</div>
+    <div class="section">
+        <h2>Rapportino di Intervento</h2>
+        <div class="badge">USO INTERNO</div>
 
-    <table>
-        <tr>
-            <th>Data Intervento</th>
-            <td>{{ \Carbon\Carbon::parse($intervento->data_intervento)->format('d/m/Y') }}</td>
-        </tr>
-        <tr>
-            <th>Tecnici</th>
-            <td>{{ $intervento->tecnici->pluck('name')->join(', ') }}</td>
-        </tr>
-    </table>
+        <table>
+            <tr>
+                <th>Data Intervento</th>
+                <td>{{ \Carbon\Carbon::parse($intervento->data_intervento)->format('d/m/Y') }}</td>
+            </tr>
+            <tr>
+                <th>Tecnici</th>
+                <td>{{ $intervento->tecnici->pluck('name')->join(', ') }}</td>
+            </tr>
+        </table>
+    </div>
 
+    <div class="section">
     <h2>Dati Cliente</h2>
     <div class="dati-cliente">
         @php
@@ -68,7 +76,9 @@
             <strong>Forma pagamento:</strong> {{ $formaPagamentoBusiness !== '' ? $formaPagamentoBusiness : '-' }}
         @endif
     </div>
+    </div>
 
+    <div class="section breakable">
     <h2>Presidi Verificati</h2>
     <table>
         <thead>
@@ -112,7 +122,9 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 
+    <div class="section breakable">
     <h2>Riepilogo Presidi Intervento (Senza Prezzi)</h2>
     <table>
         <thead>
@@ -135,8 +147,10 @@
         </tbody>
     </table>
     <div class="note">Prezzi da ordine Business; per codici extra non presenti in ordine si usa il prezzo manuale inserito dal tecnico.</div>
+    </div>
 
     @if(!empty($righeIntervento['missing_mapping'] ?? []))
+        <div class="section breakable">
         <h2>Presidi Senza Codice Articolo</h2>
         <table>
             <thead>
@@ -156,6 +170,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
     @endif
 
     @php
@@ -169,6 +184,7 @@
     @endphp
 
     @if(!empty($extraPresidiSummary['rows'] ?? []))
+        <div class="section breakable">
         <h2>Extra Presidi</h2>
         <table>
             <thead>
@@ -214,8 +230,10 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
     @endif
 
+    <div class="section">
     <h2>Riepilogo Economico</h2>
     <div class="note">
         <strong>Totale ordine Business:</strong> € {{ number_format((float)($riepilogoEconomico['totale_ordine_business'] ?? 0), 2, ',', '.') }}<br>
@@ -223,13 +241,17 @@
         <strong>Extra anomalie riparate:</strong> € {{ number_format((float)($riepilogoEconomico['extra_anomalie_riparate'] ?? 0), 2, ',', '.') }}<br>
         <strong>Totale intervento aggiornato:</strong> € {{ number_format((float)($riepilogoEconomico['totale_aggiornato'] ?? 0), 2, ',', '.') }}
     </div>
+    </div>
 
     @if(($extraPresidiSummary['has_pending_manual_prices'] ?? false) === true)
+        <div class="section">
         <div class="note">
             <strong>Attenzione:</strong> alcuni extra presidi non hanno ancora un prezzo manuale assegnato.
         </div>
+        </div>
     @endif
 
+    <div class="section breakable">
     <h2>Confronto Ordine Preventivo</h2>
     @if(!($ordinePreventivo['found'] ?? false))
         <div class="note">
@@ -319,7 +341,9 @@
             </table>
         @endif
     @endif
+    </div>
 
+    <div class="section">
     <h2>Riepilogo Anomalie</h2>
     <div class="note">
         <strong>Totale:</strong> {{ $anomalieRiepilogo['totale'] ?? 0 }}<br>
@@ -328,7 +352,9 @@
         <strong>Importo riparate:</strong> € {{ number_format((float)($anomalieRiepilogo['importo_riparate'] ?? 0), 2, ',', '.') }}<br>
         <strong>Importo preventivo:</strong> € {{ number_format((float)($anomalieRiepilogo['importo_preventivo'] ?? 0), 2, ',', '.') }}
     </div>
+    </div>
     @if(!empty($anomalieRiepilogo['dettaglio'] ?? []))
+        <div class="section breakable">
         <table>
             <thead>
                 <tr>
@@ -355,14 +381,18 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
     @endif
 
     @php $noteIntervento = $intervento->note ?? $intervento->note_generali ?? null; @endphp
     @if($noteIntervento)
+        <div class="section">
         <h2>Note Intervento</h2>
         <div class="note">{{ $noteIntervento }}</div>
+        </div>
     @endif
 
+    <div class="firma-wrap">
     <div class="firma">
         <label>Firma del Cliente per accettazione</label>
         @if($intervento->firma_cliente_base64)
@@ -384,6 +414,7 @@
         @else
             <p><em>Firma tecnico non disponibile</em></p>
         @endif
+    </div>
     </div>
 
 </body>
