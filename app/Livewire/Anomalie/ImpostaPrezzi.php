@@ -4,6 +4,7 @@ namespace App\Livewire\Anomalie;
 
 use App\Models\Anomalia;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
@@ -61,6 +62,7 @@ class ImpostaPrezzi extends Component
             return;
         }
 
+        $this->caricaStato();
         $this->dispatch('toast', type: 'success', message: 'Anomalia aggiornata.');
     }
 
@@ -86,6 +88,7 @@ class ImpostaPrezzi extends Component
             return;
         }
 
+        $this->caricaStato();
         $this->dispatch('toast', type: 'success', message: 'Prezzi anomalie salvati con successo.');
     }
 
@@ -129,8 +132,7 @@ class ImpostaPrezzi extends Component
 
     private function persistAnomalia(int $anomaliaId): bool
     {
-        $anomalia = Anomalia::find($anomaliaId);
-        if (!$anomalia) {
+        if (!Anomalia::query()->whereKey($anomaliaId)->exists()) {
             return true;
         }
 
@@ -148,11 +150,23 @@ class ImpostaPrezzi extends Component
             $payload['prezzo'] = $parsedPrezzo;
         }
 
-        $anomalia->update($payload);
+        try {
+            Anomalia::query()->whereKey($anomaliaId)->update($payload);
+            $anomalia = Anomalia::query()->select(['id', 'attiva', 'prezzo'])->find($anomaliaId);
+        } catch (\Throwable $e) {
+            Log::error('Errore salvataggio prezzo anomalia', [
+                'anomalia_id' => $anomaliaId,
+                'payload' => $payload,
+                'message' => $e->getMessage(),
+            ]);
+            return false;
+        }
 
-        $this->attive[(string) $anomaliaId] = (bool) $anomalia->attiva;
-        if ($this->hasPrezzoColumn) {
-            $this->prezzi[(string) $anomaliaId] = number_format((float) ($anomalia->prezzo ?? 0), 2, '.', '');
+        if ($anomalia) {
+            $this->attive[(string) $anomaliaId] = (bool) $anomalia->attiva;
+            if ($this->hasPrezzoColumn) {
+                $this->prezzi[(string) $anomaliaId] = number_format((float) ($anomalia->prezzo ?? 0), 2, '.', '');
+            }
         }
 
         return true;

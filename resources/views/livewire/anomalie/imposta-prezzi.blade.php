@@ -5,7 +5,7 @@
             <p class="text-sm text-gray-600">Configura il prezzo da aggiungere all'intervento quando l'anomalia viene marcata come riparata.</p>
         </div>
         <button type="button"
-                wire:click="salvaTutti"
+                wire:click.prevent="salvaTutti"
                 class="px-3 py-2 rounded border border-red-600 bg-red-600 text-white text-sm hover:bg-red-700">
             Salva Tutto
         </button>
@@ -53,7 +53,7 @@
                                 </td>
                                 <td class="px-3 py-2 text-right">
                                     <button type="button"
-                                            wire:click="salvaRiga({{ $anomalia->id }})"
+                                            wire:click.prevent="salvaRiga({{ $anomalia->id }})"
                                             class="px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 text-xs">
                                         Salva
                                     </button>
