@@ -66,19 +66,48 @@ class PlanningSettimanale extends Component
             || $dataCarbon->isSameDay($lunedìPasqua);
     }
     
-    public function annullaIntervento($id)
+    public function annullaIntervento(int $id, ?int $tecnicoId = null): void
     {
-        $intervento = \App\Models\Intervento::find($id);
-    
-        if ($intervento && $intervento->stato === 'Pianificato') {
-            $intervento->tecnici()->detach(); // rimuove legami con tecnici
-            $intervento->presidiIntervento()->delete(); // elimina legami con presidi
-            $intervento->delete(); // elimina l’intervento
+        $intervento = Intervento::find($id);
 
-            $this->dispatch('toast', type: 'info', message: 'Intervento eliminato!');
-        }else{
+        if (!$intervento || $intervento->stato !== 'Pianificato') {
             $this->dispatch('toast', type: 'warning', message: 'Intervento non eliminabile in quanto COMPLETATO!');
+            return;
         }
+
+        if ($tecnicoId !== null) {
+            $pivot = InterventoTecnico::where('intervento_id', $id)
+                ->where('user_id', $tecnicoId)
+                ->first();
+
+            if (!$pivot) {
+                $this->dispatch('toast', type: 'error', message: 'Pianificazione tecnico non trovata.');
+                return;
+            }
+
+            $pivot->delete();
+
+            $hasTecnici = InterventoTecnico::where('intervento_id', $id)->exists();
+            if (!$hasTecnici) {
+                $intervento->presidiIntervento()->delete();
+                $intervento->delete();
+                $this->dispatch('toast', type: 'info', message: 'Ultimo tecnico rimosso: intervento annullato.');
+            } else {
+                $this->dispatch('toast', type: 'info', message: 'Pianificazione annullata per il tecnico selezionato.');
+            }
+
+            $this->clearActionSelections();
+            $this->dispatch('intervento-pianificato');
+            return;
+        }
+
+        $intervento->tecnici()->detach();
+        $intervento->presidiIntervento()->delete();
+        $intervento->delete();
+
+        $this->clearActionSelections();
+        $this->dispatch('intervento-pianificato');
+        $this->dispatch('toast', type: 'info', message: 'Intervento eliminato.');
     }
     
     public function setVista(string $vista): void
@@ -277,6 +306,8 @@ class PlanningSettimanale extends Component
         });
 
         $this->azioniTecnico[$this->azioneKey($interventoId, $tecnicoDaId)] = null;
+        $this->clearActionSelections();
+        $this->dispatch('intervento-pianificato');
         $this->dispatch('toast', type: 'success', message: 'Intervento spostato al nuovo tecnico.');
     }
 
@@ -332,6 +363,8 @@ class PlanningSettimanale extends Component
         ]);
 
         $this->azioniTecnico[$this->azioneKey($interventoId, $tecnicoBaseId)] = null;
+        $this->clearActionSelections();
+        $this->dispatch('intervento-pianificato');
         $this->dispatch('toast', type: 'success', message: 'Tecnico aggiunto alla pianificazione.');
     }
 
@@ -402,6 +435,8 @@ class PlanningSettimanale extends Component
 
         $giornoLabel = Carbon::parse($dataRef)->format('d/m/Y');
         if ($spostati > 0) {
+            $this->clearActionSelections();
+            $this->dispatch('intervento-pianificato');
             $this->dispatch('toast', type: 'success', message: "Spostamento {$giornoLabel}: {$spostati} interventi spostati, {$saltati} saltati.");
             return;
         }
@@ -531,6 +566,11 @@ class PlanningSettimanale extends Component
     private function azioneKey(int $interventoId, int $tecnicoId): string
     {
         return $interventoId . ':' . $tecnicoId;
+    }
+
+    private function clearActionSelections(): void
+    {
+        $this->azioniTecnico = [];
     }
 
     private function normalizeBulkData(): string

@@ -123,7 +123,8 @@
                                             $scheduledEnd = $int->pivot?->scheduled_end_at ? \Carbon\Carbon::parse($int->pivot->scheduled_end_at) : null;
                                             $azioneKey = $int->id . ':' . $tec->id;
                                         @endphp
-                                        <div class="mb-2 text-left p-2 rounded border bg-white shadow-sm space-y-2">
+                                        <div class="mb-2 text-left p-2 rounded border bg-white shadow-sm space-y-2"
+                                             wire:key="planning-int-{{ $int->id }}-tec-{{ $tec->id }}">
                                             <a href="{{ route('interventi.evadi.dettaglio', ['intervento' => $int->id]) }}"
                                                class="block w-full rounded border border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 px-3 py-3 text-sm font-semibold leading-tight">
                                                 {{ $int->cliente->nome }}
@@ -153,7 +154,7 @@
 
                                             @if($int->stato === 'Pianificato')
                                                 <div class="grid grid-cols-1 gap-1">
-                                                    <select wire:model="azioniTecnico.{{ $azioneKey }}"
+                                                    <select wire:model.live="azioniTecnico.{{ $azioneKey }}"
                                                             class="w-full border border-gray-300 rounded px-2 py-2 text-xs">
                                                         <option value="">Seleziona tecnico</option>
                                                         @foreach($tecniciDisponibili as $tecOpt)
@@ -175,10 +176,10 @@
                                                 </div>
                                             @endif
 
-                                            <button wire:click="annullaIntervento({{ $int->id }})"
+                                            <button wire:click="annullaIntervento({{ $int->id }}, {{ $tec->id }})"
                                                     class="w-full rounded border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 py-2 text-xs font-semibold"
                                                     title="Annulla intervento">
-                                                ✖️ Annulla intervento
+                                                ✖️ Rimuovi da questo tecnico
                                             </button>
                                         </div>
                                     @endforeach
