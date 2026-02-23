@@ -47,48 +47,6 @@ class EvadiInterventi extends Component
         $this->dataSelezionata = now()->format('Y-m-d');
     }
 
-    public function prossimoGiornoPianificato(): void
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return;
-        }
-
-        $nextDate = $user->interventi()
-            ->where('stato', 'Pianificato')
-            ->whereDate('data_intervento', '>', $this->dataSelezionata)
-            ->orderBy('data_intervento')
-            ->value('data_intervento');
-
-        if (!$nextDate) {
-            $this->dispatch('toast', type: 'info', message: 'Nessun intervento pianificato successivo.');
-            return;
-        }
-
-        $this->dataSelezionata = Carbon::parse($nextDate)->format('Y-m-d');
-    }
-
-    public function precedenteGiornoPianificato(): void
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return;
-        }
-
-        $prevDate = $user->interventi()
-            ->where('stato', 'Pianificato')
-            ->whereDate('data_intervento', '<', $this->dataSelezionata)
-            ->orderByDesc('data_intervento')
-            ->value('data_intervento');
-
-        if (!$prevDate) {
-            $this->dispatch('toast', type: 'info', message: 'Nessun intervento pianificato precedente.');
-            return;
-        }
-
-        $this->dataSelezionata = Carbon::parse($prevDate)->format('Y-m-d');
-    }
-
 
     private function queryInterventiPerData()
     {

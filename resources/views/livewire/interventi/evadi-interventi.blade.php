@@ -2,27 +2,38 @@
 
     {{-- Header: selezione data + vista --}}
     <div class="flex flex-col gap-3 mb-4">
-        <div class="flex flex-wrap items-center gap-2">
-            <button type="button" wire:click="precedenteGiornoPianificato" class="btn btn-sm btn-outline">
-                ⏮ Giorno pianificato prec.
-            </button>
-            <button type="button" wire:click="giornoPrecedente" class="btn btn-sm btn-outline">
-                ⬅️ Giorno -1
-            </button>
-            <input type="date" wire:model.live="dataSelezionata" class="input input-sm input-bordered" />
-            <button type="button" wire:click="giornoSuccessivo" class="btn btn-sm btn-outline">
-                Giorno +1 ➡️
-            </button>
-            <button type="button" wire:click="prossimoGiornoPianificato" class="btn btn-sm btn-outline">
-                Giorno pianificato succ. ⏭
-            </button>
-            <button type="button" wire:click="vaiAOggi" class="btn btn-sm btn-secondary">
-                Oggi
-            </button>
-            <button type="button" wire:click="caricaInterventi" class="btn btn-sm btn-secondary">
-                🔄 Aggiorna
-            </button>
+        <div class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <button type="button"
+                        wire:click="giornoPrecedente"
+                        class="rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 px-4 py-3 text-base font-semibold min-h-[48px]">
+                    ⬅️ Giorno prec.
+                </button>
+
+                <input type="date"
+                       wire:model.live="dataSelezionata"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-3 text-base min-h-[48px]">
+
+                <button type="button"
+                        wire:click="giornoSuccessivo"
+                        class="rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 px-4 py-3 text-base font-semibold min-h-[48px]">
+                    Giorno succ. ➡️
+                </button>
+
+                <button type="button"
+                        wire:click="vaiAOggi"
+                        class="rounded-lg bg-red-600 text-white hover:bg-red-700 px-4 py-3 text-base font-semibold min-h-[48px]">
+                    Oggi
+                </button>
+
+                <button type="button"
+                        wire:click="caricaInterventi"
+                        class="rounded-lg bg-gray-700 text-white hover:bg-gray-800 px-4 py-3 text-base font-semibold min-h-[48px]">
+                    Aggiorna
+                </button>
+            </div>
         </div>
+
         <div class="text-xs text-gray-600">
             Data selezionata: <span class="font-semibold">{{ \Carbon\Carbon::parse($dataSelezionata)->format('d/m/Y') }}</span>
             · Interventi trovati: <span class="font-semibold">{{ $interventi->count() }}</span>
