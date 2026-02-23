@@ -4,6 +4,7 @@ namespace App\Livewire\Interventi;
 use Livewire\Component;
 use App\Models\Intervento;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class EvadiInterventi extends Component
 {
@@ -38,7 +39,73 @@ class EvadiInterventi extends Component
         }
     }
 
-    
+    public function updatedDataSelezionata(): void
+    {
+        $this->caricaInterventi();
+    }
+
+    public function giornoPrecedente(): void
+    {
+        $this->dataSelezionata = Carbon::parse($this->dataSelezionata)->subDay()->format('Y-m-d');
+        $this->caricaInterventi();
+    }
+
+    public function giornoSuccessivo(): void
+    {
+        $this->dataSelezionata = Carbon::parse($this->dataSelezionata)->addDay()->format('Y-m-d');
+        $this->caricaInterventi();
+    }
+
+    public function vaiAOggi(): void
+    {
+        $this->dataSelezionata = now()->format('Y-m-d');
+        $this->caricaInterventi();
+    }
+
+    public function prossimoGiornoPianificato(): void
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
+
+        $nextDate = $user->interventi()
+            ->where('stato', 'Pianificato')
+            ->whereDate('data_intervento', '>', $this->dataSelezionata)
+            ->orderBy('data_intervento')
+            ->value('data_intervento');
+
+        if (!$nextDate) {
+            $this->dispatch('toast', type: 'info', message: 'Nessun intervento pianificato successivo.');
+            return;
+        }
+
+        $this->dataSelezionata = Carbon::parse($nextDate)->format('Y-m-d');
+        $this->caricaInterventi();
+    }
+
+    public function precedenteGiornoPianificato(): void
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
+
+        $prevDate = $user->interventi()
+            ->where('stato', 'Pianificato')
+            ->whereDate('data_intervento', '<', $this->dataSelezionata)
+            ->orderByDesc('data_intervento')
+            ->value('data_intervento');
+
+        if (!$prevDate) {
+            $this->dispatch('toast', type: 'info', message: 'Nessun intervento pianificato precedente.');
+            return;
+        }
+
+        $this->dataSelezionata = Carbon::parse($prevDate)->format('Y-m-d');
+        $this->caricaInterventi();
+    }
+
 
     public function getInterventiDelGiornoProperty()
     {

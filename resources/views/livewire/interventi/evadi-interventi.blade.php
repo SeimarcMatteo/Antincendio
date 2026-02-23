@@ -1,15 +1,32 @@
 <div class="space-y-6">
 
     {{-- Header: selezione data + vista --}}
-    <div class="flex justify-between items-center mb-4">
-        <div class="flex items-center gap-2">
-            <input type="date" wire:model.lazy="dataSelezionata" class="input input-sm input-bordered" />
+    <div class="flex flex-col gap-3 mb-4">
+        <div class="flex flex-wrap items-center gap-2">
+            <button wire:click="precedenteGiornoPianificato" class="btn btn-sm btn-outline">
+                ⏮ Giorno pianificato prec.
+            </button>
+            <button wire:click="giornoPrecedente" class="btn btn-sm btn-outline">
+                ⬅️ Giorno -1
+            </button>
+            <input type="date" wire:model.live="dataSelezionata" class="input input-sm input-bordered" />
+            <button wire:click="giornoSuccessivo" class="btn btn-sm btn-outline">
+                Giorno +1 ➡️
+            </button>
+            <button wire:click="prossimoGiornoPianificato" class="btn btn-sm btn-outline">
+                Giorno pianificato succ. ⏭
+            </button>
+            <button wire:click="vaiAOggi" class="btn btn-sm btn-secondary">
+                Oggi
+            </button>
             <button wire:click="caricaInterventi" class="btn btn-sm btn-secondary">
-                🔄 Carica interventi
+                🔄 Aggiorna
             </button>
         </div>
-
-
+        <div class="text-xs text-gray-600">
+            Data selezionata: <span class="font-semibold">{{ \Carbon\Carbon::parse($dataSelezionata)->format('d/m/Y') }}</span>
+            · Interventi trovati: <span class="font-semibold">{{ $interventi->count() }}</span>
+        </div>
     </div>
 
     {{-- Nessun intervento --}}
