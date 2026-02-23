@@ -29,6 +29,8 @@ class FormPianificazioneIntervento extends Component
 
     public $clientiInScadenza = [];
     public $clientiConInterventiEsistenti = [];
+
+    private ?array $interventiStatoCache = null;
     
     protected $listeners = ['setMeseAnno'];
 
@@ -71,9 +73,20 @@ class FormPianificazioneIntervento extends Component
 
     public function applicaFiltri()
     {
+        $this->resetInterventiStatoCache();
         // usa i "computed properties" di Livewire
         $this->clientiInScadenza = $this->getClientiInScadenzaProperty();
         $this->clientiConInterventiEsistenti = $this->getClientiConInterventiEsistentiProperty();
+    }
+
+    public function updatedMeseSelezionato(): void
+    {
+        $this->resetInterventiStatoCache();
+    }
+
+    public function updatedAnnoSelezionato(): void
+    {
+        $this->resetInterventiStatoCache();
     }
 
     public function interventoRegistrato($clienteId, $sedeId = null): bool
@@ -90,6 +103,7 @@ class FormPianificazioneIntervento extends Component
     {
         $this->meseSelezionato = (int) $mese;
         $this->annoSelezionato = (int) $anno;
+        $this->resetInterventiStatoCache();
         // se un domani vorrai, qui puoi ricaricare le zone in base al mese
         // $this->caricaZoneDisponibili();
     }
@@ -158,7 +172,12 @@ class FormPianificazioneIntervento extends Component
                 'sedi.presidi' => fn($q) => $q->attivi(),
                 'presidi' => fn($q) => $q->attivi(),
             ])
-            ->when($this->zonaFiltro, fn($q) => $q->where('zona', $this->zonaFiltro))
+            ->when($this->zonaFiltro, function ($q) {
+                $q->where(function ($qq) {
+                    $qq->where('zona', $this->zonaFiltro)
+                        ->orWhereHas('sedi', fn($qs) => $qs->where('zona', $this->zonaFiltro));
+                });
+            })
             ->whereHas('presidi', fn($q) => $q->attivi())
             ->where(function ($q) use ($mese) {
                 $meseInt = json_encode((int) $mese);   // "4"
@@ -185,7 +204,12 @@ class FormPianificazioneIntervento extends Component
                 'sedi.presidi' => fn($q) => $q->attivi(),
                 'presidi' => fn($q) => $q->attivi(),
             ])
-            ->when($this->zonaFiltro, fn($q) => $q->where('zona', $this->zonaFiltro))
+            ->when($this->zonaFiltro, function ($q) {
+                $q->where(function ($qq) {
+                    $qq->where('zona', $this->zonaFiltro)
+                        ->orWhereHas('sedi', fn($qs) => $qs->where('zona', $this->zonaFiltro));
+                });
+            })
             ->whereHas('presidi', fn($q) => $q->attivi())
             ->where(function ($q) use ($mese) {
                 $meseInt = json_encode((int) $mese);   // "4"
@@ -269,6 +293,7 @@ class FormPianificazioneIntervento extends Component
         }
 
         $this->reset(['clienteId', 'sedeId', 'dataIntervento', 'tecnici', 'tecniciOrari', 'noteIntervento']);
+        $this->resetInterventiStatoCache();
         $this->dispatch('intervento-pianificato');
         $this->dispatch('toast', type: 'success', message: 'Intervento pianificato con successo!');
         $this->applicaFiltri();
@@ -299,36 +324,81 @@ class FormPianificazioneIntervento extends Component
 
     public function interventoEsistente($clienteId, $sedeId = null): bool
     {
-        return Intervento::where('cliente_id', $clienteId)
-            ->when($sedeId !== null, fn($q) => $q->where('sede_id', $sedeId))
-            ->when($sedeId === null, fn($q) => $q->whereNull('sede_id'))
-            ->whereMonth('data_intervento', $this->meseSelezionato)
-            ->whereYear('data_intervento', $this->annoSelezionato)
-            ->whereIn('stato', ['Pianificato', 'Completato'])
-            ->where(function ($query) {
-                $query->where('stato', 'Pianificato')
-                    ->orWhere(function ($q) {
-                        $q->where('stato', 'Completato')
-                          ->whereDoesntHave('presidiIntervento', fn($sub) =>
-                              $sub->where('esito', 'non_verificato')
-                          );
-                    });
-            })
-            ->exists();
+        $key = $this->interventoCacheKey((int) $clienteId, $sedeId);
+        $row = $this->interventiStatoMeseMap()[$key] ?? null;
+        return (bool) ($row['esistente'] ?? false);
     }
 
     public function interventoEvasa($clienteId, $sedeId = null): bool
     {
-        return Intervento::where('cliente_id', $clienteId)
-            ->when($sedeId !== null, fn($q) => $q->where('sede_id', $sedeId))
-            ->when($sedeId === null, fn($q) => $q->whereNull('sede_id'))
-            ->whereMonth('data_intervento', $this->meseSelezionato)
-            ->whereYear('data_intervento', $this->annoSelezionato)
-            ->where('stato', 'Completato')
-            ->whereDoesntHave('presidiIntervento', fn($q) =>
-                $q->where('esito', 'non_verificato')
-            )
-            ->exists();
+        $key = $this->interventoCacheKey((int) $clienteId, $sedeId);
+        $row = $this->interventiStatoMeseMap()[$key] ?? null;
+        return (bool) ($row['evasa'] ?? false);
+    }
+
+    public function getMeseSeiProperty(): int
+    {
+        return Carbon::create((int) $this->annoSelezionato, (int) $this->meseSelezionato, 1)
+            ->addMonthsNoOverflow(6)
+            ->month;
+    }
+
+    public function getTotaliZonaSelezionataProperty(): array
+    {
+        $meseCorrente = (int) $this->meseSelezionato;
+        $meseSei = (int) $this->meseSei;
+        $totaleCorrente = 0;
+        $totaleSei = 0;
+        $interventi = 0;
+
+        foreach ($this->clientiInScadenza as $cliente) {
+            if ($cliente->presidi->whereNull('sede_id')->isNotEmpty() && !$this->interventoEsistente($cliente->id, null)) {
+                $zona = trim((string) ($cliente->zona ?? ''));
+                if ($this->zonaMatch($zona)) {
+                    $totaleCorrente += $this->minutiPerInterventoPreview($cliente, null, $meseCorrente);
+                    $totaleSei += $this->minutiPerInterventoPreview($cliente, null, $meseSei);
+                    $interventi++;
+                }
+            }
+
+            foreach ($cliente->sedi as $sede) {
+                if ($sede->presidi->isNotEmpty() && !$this->interventoEsistente($cliente->id, $sede->id)) {
+                    $zona = trim((string) ($sede->zona ?? $cliente->zona ?? ''));
+                    if ($this->zonaMatch($zona)) {
+                        $totaleCorrente += $this->minutiPerInterventoPreview($cliente, $sede, $meseCorrente);
+                        $totaleSei += $this->minutiPerInterventoPreview($cliente, $sede, $meseSei);
+                        $interventi++;
+                    }
+                }
+            }
+        }
+
+        return [
+            'interventi' => $interventi,
+            'minuti_corrente' => $totaleCorrente,
+            'minuti_mese_sei' => $totaleSei,
+        ];
+    }
+
+    public function getZoneConStatoProperty(): array
+    {
+        $stats = $this->collectZoneStats();
+        $rows = [];
+
+        foreach ($this->zoneDisponibili as $zona) {
+            $stat = $stats[$zona] ?? ['totale' => 0, 'pianificate' => 0];
+            $complete = ((int) $stat['totale'] > 0) && ((int) $stat['pianificate'] >= (int) $stat['totale']);
+
+            $rows[] = [
+                'value' => $zona,
+                'label' => $zona . ($complete ? ' *' : ''),
+                'complete' => $complete,
+                'totale' => (int) $stat['totale'],
+                'pianificate' => (int) $stat['pianificate'],
+            ];
+        }
+
+        return $rows;
     }
 
     public function render()
@@ -336,6 +406,154 @@ class FormPianificazioneIntervento extends Component
         return view('livewire.interventi.form-pianificazione-intervento', [
             'clientiInScadenza' => $this->clientiInScadenza,
             'clientiConInterventiEsistenti' => $this->clientiConInterventiEsistenti,
+            'zoneConStato' => $this->zoneConStato,
+            'totaliZonaSelezionata' => $this->totaliZonaSelezionata,
+            'meseSei' => $this->meseSei,
         ]);
+    }
+
+    private function collectZoneStats(): array
+    {
+        $mese = str_pad((string) $this->meseSelezionato, 2, '0', STR_PAD_LEFT);
+        $stats = [];
+        $seen = [];
+
+        foreach ($this->zoneDisponibili as $zona) {
+            $stats[$zona] = ['totale' => 0, 'pianificate' => 0];
+        }
+
+        $clienti = Cliente::with([
+                'sedi.presidi' => fn($q) => $q->attivi(),
+                'presidi' => fn($q) => $q->attivi(),
+            ])
+            ->whereHas('presidi', fn($q) => $q->attivi())
+            ->where(function ($q) use ($mese) {
+                $meseInt = json_encode((int) $mese);
+                $meseStr = json_encode($mese);
+                $q->whereRaw("JSON_CONTAINS(mesi_visita, ?)", [$meseInt])
+                    ->orWhereRaw("JSON_CONTAINS(mesi_visita, ?)", [$meseStr]);
+            })
+            ->get();
+
+        foreach ($clienti as $cliente) {
+            if ($cliente->presidi->whereNull('sede_id')->isNotEmpty()) {
+                $zona = trim((string) ($cliente->zona ?? ''));
+                if ($zona !== '') {
+                    $entryKey = $this->interventoCacheKey((int) $cliente->id, null);
+                    if (!isset($seen[$entryKey])) {
+                        $seen[$entryKey] = true;
+                        if (!isset($stats[$zona])) {
+                            $stats[$zona] = ['totale' => 0, 'pianificate' => 0];
+                        }
+                        $stats[$zona]['totale']++;
+                        if ($this->interventoEsistente($cliente->id, null)) {
+                            $stats[$zona]['pianificate']++;
+                        }
+                    }
+                }
+            }
+
+            foreach ($cliente->sedi as $sede) {
+                if ($sede->presidi->isEmpty()) {
+                    continue;
+                }
+
+                $zona = trim((string) ($sede->zona ?? $cliente->zona ?? ''));
+                if ($zona === '') {
+                    continue;
+                }
+
+                $entryKey = $this->interventoCacheKey((int) $cliente->id, (int) $sede->id);
+                if (isset($seen[$entryKey])) {
+                    continue;
+                }
+
+                $seen[$entryKey] = true;
+                if (!isset($stats[$zona])) {
+                    $stats[$zona] = ['totale' => 0, 'pianificate' => 0];
+                }
+                $stats[$zona]['totale']++;
+                if ($this->interventoEsistente($cliente->id, $sede->id)) {
+                    $stats[$zona]['pianificate']++;
+                }
+            }
+        }
+
+        return $stats;
+    }
+
+    private function minutiPerInterventoPreview(Cliente $cliente, ?Sede $sede, int $mese): int
+    {
+        $minutiSede = $sede?->minutiPerMese($mese);
+        if (!empty($minutiSede) && (int) $minutiSede > 0) {
+            return (int) $minutiSede;
+        }
+
+        $minutiCliente = $cliente->minutiPerMese($mese);
+        if (!empty($minutiCliente) && (int) $minutiCliente > 0) {
+            return (int) $minutiCliente;
+        }
+
+        return (int) ($sede?->minuti_intervento ?? $cliente->minuti_intervento ?? 60);
+    }
+
+    private function zonaMatch(?string $zona): bool
+    {
+        $filtro = trim((string) $this->zonaFiltro);
+        if ($filtro === '') {
+            return true;
+        }
+        return mb_strtoupper(trim((string) $zona)) === mb_strtoupper($filtro);
+    }
+
+    private function resetInterventiStatoCache(): void
+    {
+        $this->interventiStatoCache = null;
+    }
+
+    private function interventiStatoMeseMap(): array
+    {
+        if ($this->interventiStatoCache !== null) {
+            return $this->interventiStatoCache;
+        }
+
+        $map = [];
+        $rows = Intervento::query()
+            ->whereMonth('data_intervento', (int) $this->meseSelezionato)
+            ->whereYear('data_intervento', (int) $this->annoSelezionato)
+            ->whereIn('stato', ['Pianificato', 'Completato'])
+            ->withCount([
+                'presidiIntervento as non_verificati_count' => fn($q) => $q->where('esito', 'non_verificato'),
+            ])
+            ->get(['cliente_id', 'sede_id', 'stato']);
+
+        foreach ($rows as $row) {
+            $key = $this->interventoCacheKey((int) $row->cliente_id, $row->sede_id !== null ? (int) $row->sede_id : null);
+
+            if (!isset($map[$key])) {
+                $map[$key] = [
+                    'esistente' => false,
+                    'evasa' => false,
+                ];
+            }
+
+            if ((string) $row->stato === 'Pianificato') {
+                $map[$key]['esistente'] = true;
+                continue;
+            }
+
+            if ((string) $row->stato === 'Completato' && (int) ($row->non_verificati_count ?? 0) === 0) {
+                $map[$key]['esistente'] = true;
+                $map[$key]['evasa'] = true;
+            }
+        }
+
+        $this->interventiStatoCache = $map;
+        return $this->interventiStatoCache;
+    }
+
+    private function interventoCacheKey(int $clienteId, $sedeId = null): string
+    {
+        return $clienteId . '|' . ($sedeId === null ? 'null' : (string) ((int) $sedeId));
     }
 }

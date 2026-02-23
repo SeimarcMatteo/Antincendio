@@ -15,8 +15,8 @@
                 <label class="text-sm font-medium">Zona</label>
                 <select wire:model.defer="zonaFiltro" class="select select-sm select-bordered min-w-[180px]">
                     <option value="">Tutte</option>
-                    @foreach($zoneDisponibili as $zona)
-                        <option value="{{ $zona }}">{{ $zona }}</option>
+                    @foreach($zoneConStato as $zonaRow)
+                        <option value="{{ $zonaRow['value'] }}">{{ $zonaRow['label'] }}</option>
                     @endforeach
                 </select>
             </div>
@@ -36,6 +36,26 @@
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-700">Evasa</span>
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">Pianificata</span>
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700">Da pianificare</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">* Zona pianificata completamente</span>
+        </div>
+
+        @php
+            $totMinCorr = (int)($totaliZonaSelezionata['minuti_corrente'] ?? 0);
+            $totMinSei = (int)($totaliZonaSelezionata['minuti_mese_sei'] ?? 0);
+            $meseCorrLabel = Date::create()->month((int)$meseSelezionato)->format('F');
+            $meseSeiLabel = Date::create()->month((int)$meseSei)->format('F');
+        @endphp
+        <div class="mt-3 rounded border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900">
+            <div class="font-semibold mb-1">
+                Totale zona {{ $zonaFiltro !== '' ? 'selezionata' : '(tutte le zone visibili)' }}:
+                {{ (int)($totaliZonaSelezionata['interventi'] ?? 0) }} interventi da pianificare
+            </div>
+            <div>
+                Tempo {{ $meseCorrLabel }}:
+                <span class="font-semibold">{{ intdiv($totMinCorr, 60) }} h {{ $totMinCorr % 60 }} min</span>
+                · Tempo {{ $meseSeiLabel }} (+6 mesi):
+                <span class="font-semibold">{{ intdiv($totMinSei, 60) }} h {{ $totMinSei % 60 }} min</span>
+            </div>
         </div>
     </div>
 
@@ -46,34 +66,59 @@
             <div class="max-h-[70vh] overflow-auto pr-1 space-y-2">
             @foreach ($clientiInScadenza as $cliente)
                 @php
-                    $clienteEvasa = $this->interventoEvasa($cliente->id, null);
-                    $clienteEsistente = $this->interventoEsistente($cliente->id, null);
                     $btns = [];
+                    $zonaFiltroNorm = mb_strtoupper(trim((string) $zonaFiltro));
+                    $meseCorr = (int) $meseSelezionato;
+                    $meseFraSei = (int) $meseSei;
+                    $calcMinuti = function ($clienteObj, $sedeObj, int $meseRef) {
+                        $minutiSede = $sedeObj?->minutiPerMese($meseRef);
+                        if (!empty($minutiSede) && (int) $minutiSede > 0) {
+                            return (int) $minutiSede;
+                        }
+                        $minutiCliente = $clienteObj->minutiPerMese($meseRef);
+                        if (!empty($minutiCliente) && (int) $minutiCliente > 0) {
+                            return (int) $minutiCliente;
+                        }
+                        return (int) ($sedeObj?->minuti_intervento ?? $clienteObj->minuti_intervento ?? 60);
+                    };
                 @endphp
 
-                @if ($cliente->presidi->whereNull('sede_id')->isNotEmpty() && !$clienteEsistente && !$clienteEvasa)
+                @if ($cliente->presidi->whereNull('sede_id')->isNotEmpty() && !$this->interventoEsistente($cliente->id, null))
                     @php
-                        $btns[] = [
-                            'label' => 'Sede principale',
-                            'sede_id' => null,
-                            'extra' => null,
-                        ];
+                        $zonaEntry = trim((string) ($cliente->zona ?? ''));
+                        $zonaMatch = $zonaFiltroNorm === '' || mb_strtoupper($zonaEntry) === $zonaFiltroNorm;
+                        if ($zonaMatch) {
+                            $btns[] = [
+                                'label' => 'Sede principale',
+                                'sede_id' => null,
+                                'extra' => null,
+                                'zona' => $zonaEntry,
+                                'minuti_corrente' => $calcMinuti($cliente, null, $meseCorr),
+                                'minuti_mese_sei' => $calcMinuti($cliente, null, $meseFraSei),
+                            ];
+                        }
                     @endphp
                 @endif
 
                 @foreach ($cliente->sedi as $sede)
                     @php
                         $presidi = $sede->presidi;
-                        $giaEvasa = $this->interventoEvasa($cliente->id, $sede->id);
                         $giaPianificato = $this->interventoEsistente($cliente->id, $sede->id);
                     @endphp
-                    @if ($presidi->isNotEmpty() && !$giaEvasa && !$giaPianificato)
+                    @if ($presidi->isNotEmpty() && !$giaPianificato)
                         @php
-                            $btns[] = [
-                                'label' => $sede->nome,
-                                'sede_id' => $sede->id,
-                                'extra' => $sede->citta,
-                            ];
+                            $zonaEntry = trim((string) ($sede->zona ?? $cliente->zona ?? ''));
+                            $zonaMatch = $zonaFiltroNorm === '' || mb_strtoupper($zonaEntry) === $zonaFiltroNorm;
+                            if ($zonaMatch) {
+                                $btns[] = [
+                                    'label' => $sede->nome,
+                                    'sede_id' => $sede->id,
+                                    'extra' => $sede->citta,
+                                    'zona' => $zonaEntry,
+                                    'minuti_corrente' => $calcMinuti($cliente, $sede, $meseCorr),
+                                    'minuti_mese_sei' => $calcMinuti($cliente, $sede, $meseFraSei),
+                                ];
+                            }
                         @endphp
                     @endif
                 @endforeach
@@ -84,13 +129,27 @@
                             <div class="font-semibold text-sm text-gray-900">{{ $cliente->nome }}</div>
                             <span class="text-xs text-gray-500">{{ $cliente->zona ?? '—' }}</span>
                         </div>
-                        <div class="flex flex-wrap gap-2">
+                        @if(!empty($cliente->note))
+                            <div class="mb-2 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-900 whitespace-pre-wrap">
+                                <span class="font-semibold">Note anagrafica:</span> {{ $cliente->note }}
+                            </div>
+                        @endif
+                        <div class="grid grid-cols-1 gap-2">
                             @foreach($btns as $b)
-                                <button
-                                    wire:click="caricaDati({{ $cliente->id }}, {{ $b['sede_id'] ? $b['sede_id'] : 'null' }}, '{{ $meseSelezionato }}', '{{ $annoSelezionato }}')"
-                                    class="btn btn-xs btn-secondary">
-                                    📍 {{ $b['label'] }} @if($b['extra']) – {{ $b['extra'] }} @endif
-                                </button>
+                                <div class="rounded border bg-white p-2">
+                                    <button
+                                        wire:click="caricaDati({{ $cliente->id }}, {{ $b['sede_id'] ? $b['sede_id'] : 'null' }}, '{{ $meseSelezionato }}', '{{ $annoSelezionato }}')"
+                                        class="btn btn-xs btn-secondary w-full justify-start">
+                                        📍 {{ $b['label'] }} @if($b['extra']) – {{ $b['extra'] }} @endif
+                                    </button>
+                                    <div class="mt-1 text-[11px] text-gray-600">
+                                        Zona: <span class="font-semibold">{{ $b['zona'] !== '' ? $b['zona'] : '—' }}</span>
+                                        · {{ $meseCorrLabel }}:
+                                        <span class="font-semibold">{{ intdiv((int)$b['minuti_corrente'], 60) }} h {{ (int)$b['minuti_corrente'] % 60 }} min</span>
+                                        · {{ $meseSeiLabel }} (+6):
+                                        <span class="font-semibold">{{ intdiv((int)$b['minuti_mese_sei'], 60) }} h {{ (int)$b['minuti_mese_sei'] % 60 }} min</span>
+                                    </div>
+                                </div>
                             @endforeach
                         </div>
                     </div>
@@ -104,13 +163,18 @@
             <h2 class="text-md font-semibold mb-2 text-gray-800">🟡 Interventi già pianificati o evasi</h2>
             <div class="max-h-[70vh] overflow-auto pr-1 space-y-2">
             @foreach ($clientiConInterventiEsistenti as $cliente)
+                @php
+                    $zonaFiltroNorm = mb_strtoupper(trim((string) $zonaFiltro));
+                @endphp
                 {{-- Sede principale --}}
                 @if ($cliente->presidi->whereNull('sede_id')->isNotEmpty())
                     @php
                         $giaEvasa = $this->interventoEvasa($cliente->id, null);
                         $giaPianificato = $this->interventoEsistente($cliente->id, null);
+                        $zonaPrincipale = trim((string) ($cliente->zona ?? ''));
+                        $zonaMatch = $zonaFiltroNorm === '' || mb_strtoupper($zonaPrincipale) === $zonaFiltroNorm;
                     @endphp
-                    @if ($giaEvasa || $giaPianificato)
+                    @if (($giaEvasa || $giaPianificato) && $zonaMatch)
                         <div class="border rounded-md p-3 bg-gray-50 mb-2">
                             <div class="font-semibold text-sm text-gray-900">{{ $cliente->nome }}</div>
                             <div class="text-xs mt-1">
@@ -129,8 +193,10 @@
                         $presidi = $sede->presidi;
                         $giaEvasa = $this->interventoEvasa($cliente->id, $sede->id);
                         $giaPianificato = $this->interventoEsistente($cliente->id, $sede->id);
+                        $zonaSede = trim((string) ($sede->zona ?? $cliente->zona ?? ''));
+                        $zonaMatch = $zonaFiltroNorm === '' || mb_strtoupper($zonaSede) === $zonaFiltroNorm;
                     @endphp
-                    @if ($presidi->isNotEmpty() && ($giaEvasa || $giaPianificato))
+                    @if ($presidi->isNotEmpty() && ($giaEvasa || $giaPianificato) && $zonaMatch)
                         <div class="border rounded-md p-3 bg-gray-50 mb-2">
                             <div class="font-semibold text-sm text-gray-900">{{ $cliente->nome }}</div>
                             <div class="text-xs mt-1">
