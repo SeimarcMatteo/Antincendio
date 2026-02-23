@@ -3,23 +3,23 @@
     {{-- Header: selezione data + vista --}}
     <div class="flex flex-col gap-3 mb-4">
         <div class="flex flex-wrap items-center gap-2">
-            <button wire:click="precedenteGiornoPianificato" class="btn btn-sm btn-outline">
+            <button type="button" wire:click="precedenteGiornoPianificato" class="btn btn-sm btn-outline">
                 ⏮ Giorno pianificato prec.
             </button>
-            <button wire:click="giornoPrecedente" class="btn btn-sm btn-outline">
+            <button type="button" wire:click="giornoPrecedente" class="btn btn-sm btn-outline">
                 ⬅️ Giorno -1
             </button>
             <input type="date" wire:model.live="dataSelezionata" class="input input-sm input-bordered" />
-            <button wire:click="giornoSuccessivo" class="btn btn-sm btn-outline">
+            <button type="button" wire:click="giornoSuccessivo" class="btn btn-sm btn-outline">
                 Giorno +1 ➡️
             </button>
-            <button wire:click="prossimoGiornoPianificato" class="btn btn-sm btn-outline">
+            <button type="button" wire:click="prossimoGiornoPianificato" class="btn btn-sm btn-outline">
                 Giorno pianificato succ. ⏭
             </button>
-            <button wire:click="vaiAOggi" class="btn btn-sm btn-secondary">
+            <button type="button" wire:click="vaiAOggi" class="btn btn-sm btn-secondary">
                 Oggi
             </button>
-            <button wire:click="caricaInterventi" class="btn btn-sm btn-secondary">
+            <button type="button" wire:click="caricaInterventi" class="btn btn-sm btn-secondary">
                 🔄 Aggiorna
             </button>
         </div>
@@ -50,7 +50,7 @@
                 </thead>
                 <tbody>
                     @foreach($interventi as $intervento)
-                        <tr>
+                        <tr wire:key="evadi-tab-{{ $intervento->id }}">
                             <td>
                                 <a href="{{ route('clienti.mostra', $intervento->cliente_id) }}" class="text-red-700 hover:text-red-900 underline">
                                     {{ $intervento->cliente->nome }}
@@ -107,7 +107,7 @@
         @else
             <div class="space-y-4">
                 @foreach ($interventi as $intervento)
-                    <div class="border rounded shadow p-4 bg-white">
+                    <div class="border rounded shadow p-4 bg-white" wire:key="evadi-card-{{ $intervento->id }}">
                         <div class="flex justify-between items-center">
                             <div>
                                 <h3 class="font-semibold text-lg">

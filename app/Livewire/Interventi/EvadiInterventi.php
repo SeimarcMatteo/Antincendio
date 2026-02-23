@@ -5,61 +5,46 @@ use Livewire\Component;
 use App\Models\Intervento;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class EvadiInterventi extends Component
 {
     public $vista = 'schede';
-    public $dataSelezionata;
-    public $interventi = [];
+    public string $dataSelezionata;
     public array $noteByIntervento = [];
 
     public function mount()
     {
         $this->dataSelezionata = now()->format('Y-m-d');
-        $this->caricaInterventi();
     }
 
-    public function caricaInterventi()
+    public function caricaInterventi(): void
     {
-        $user = Auth::user();
-        $this->interventi = $user
-            ? $user->interventi()
-                ->with('cliente', 'sede')
-                ->whereDate('data_intervento', $this->dataSelezionata)
-                ->orderByRaw('intervento_tecnico.scheduled_start_at IS NULL')
-                ->orderBy('intervento_tecnico.scheduled_start_at')
-                ->orderBy('interventi.id')
-                ->get()
-            : collect();
-
-        foreach ($this->interventi as $int) {
-            if (!array_key_exists($int->id, $this->noteByIntervento)) {
-                $this->noteByIntervento[$int->id] = $int->note;
-            }
-        }
+        $this->dispatch('$refresh');
     }
 
     public function updatedDataSelezionata(): void
     {
-        $this->caricaInterventi();
+        try {
+            $this->dataSelezionata = Carbon::parse($this->dataSelezionata)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            $this->dataSelezionata = now()->format('Y-m-d');
+        }
     }
 
     public function giornoPrecedente(): void
     {
         $this->dataSelezionata = Carbon::parse($this->dataSelezionata)->subDay()->format('Y-m-d');
-        $this->caricaInterventi();
     }
 
     public function giornoSuccessivo(): void
     {
         $this->dataSelezionata = Carbon::parse($this->dataSelezionata)->addDay()->format('Y-m-d');
-        $this->caricaInterventi();
     }
 
     public function vaiAOggi(): void
     {
         $this->dataSelezionata = now()->format('Y-m-d');
-        $this->caricaInterventi();
     }
 
     public function prossimoGiornoPianificato(): void
@@ -81,7 +66,6 @@ class EvadiInterventi extends Component
         }
 
         $this->dataSelezionata = Carbon::parse($nextDate)->format('Y-m-d');
-        $this->caricaInterventi();
     }
 
     public function precedenteGiornoPianificato(): void
@@ -103,16 +87,32 @@ class EvadiInterventi extends Component
         }
 
         $this->dataSelezionata = Carbon::parse($prevDate)->format('Y-m-d');
-        $this->caricaInterventi();
     }
 
 
-    public function getInterventiDelGiornoProperty()
+    private function queryInterventiPerData()
     {
-        return Intervento::with('cliente', 'sede')
+        $user = Auth::user();
+        if (!$user) {
+            return Intervento::query()->whereRaw('1=0');
+        }
+
+        return $user->interventi()
+            ->with('cliente', 'sede')
             ->whereDate('data_intervento', $this->dataSelezionata)
-            ->whereHas('tecnici', fn ($q) => $q->where('users.id', Auth::id()))
-            ->get();
+            ->orderByRaw('intervento_tecnico.scheduled_start_at IS NULL')
+            ->orderBy('intervento_tecnico.scheduled_start_at')
+            ->orderBy('interventi.id');
+    }
+
+    public function getInterventiProperty(): Collection
+    {
+        return $this->queryInterventiPerData()->get();
+    }
+
+    public function getInterventiDelGiornoProperty(): Collection
+    {
+        return $this->interventi;
     }
 
     public function apriIntervento($id)
@@ -132,6 +132,21 @@ class EvadiInterventi extends Component
 
     public function render()
     {
-        return view('livewire.interventi.evadi-interventi')->layout('layouts.app'); ;
+        $interventi = $this->interventi;
+        foreach ($interventi as $int) {
+            if (!array_key_exists($int->id, $this->noteByIntervento)) {
+                $this->noteByIntervento[$int->id] = $int->note;
+            }
+        }
+
+        $view = view('livewire.interventi.evadi-interventi', [
+            'interventi' => $interventi,
+        ]);
+
+        if (request()->routeIs('interventi.evadi')) {
+            return $view->layout('layouts.app');
+        }
+
+        return $view;
     }
 }
