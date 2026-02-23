@@ -133,20 +133,29 @@
             'extra_anomalie_riparate' => 0,
             'totale_aggiornato' => 0,
         ];
+        $ordineTrovato = (bool) ($ordinePreventivo['found'] ?? false);
+        $riepilogoSoloTotaleSenzaOrdine = $richiedeIncassoTecnico && !$ordineTrovato;
+        $totaleSoloTotaleSenzaOrdine = $importoIncassato !== null
+            ? (float) $importoIncassato
+            : (float) ($riepilogoEconomico['totale_aggiornato'] ?? 0);
     @endphp
 
     @if($richiedeIncassoTecnico)
         <div class="section">
         <h2>Riepilogo Economico</h2>
         <div class="note">
-            <strong>Totale ordine Business:</strong> € {{ number_format((float)($riepilogoEconomico['totale_ordine_business'] ?? 0), 2, ',', '.') }}<br>
-            <strong>Extra presidi:</strong> € {{ number_format((float)($riepilogoEconomico['extra_presidi'] ?? 0), 2, ',', '.') }}<br>
-            <strong>Extra anomalie riparate:</strong> € {{ number_format((float)($riepilogoEconomico['extra_anomalie_riparate'] ?? 0), 2, ',', '.') }}<br>
-            <strong>Totale intervento aggiornato:</strong> € {{ number_format((float)($riepilogoEconomico['totale_aggiornato'] ?? 0), 2, ',', '.') }}
+            @if($riepilogoSoloTotaleSenzaOrdine)
+                <strong>Totale intervento:</strong> € {{ number_format($totaleSoloTotaleSenzaOrdine, 2, ',', '.') }}
+            @else
+                <strong>Totale ordine Business:</strong> € {{ number_format((float)($riepilogoEconomico['totale_ordine_business'] ?? 0), 2, ',', '.') }}<br>
+                <strong>Extra presidi:</strong> € {{ number_format((float)($riepilogoEconomico['extra_presidi'] ?? 0), 2, ',', '.') }}<br>
+                <strong>Extra anomalie riparate:</strong> € {{ number_format((float)($riepilogoEconomico['extra_anomalie_riparate'] ?? 0), 2, ',', '.') }}<br>
+                <strong>Totale intervento aggiornato:</strong> € {{ number_format((float)($riepilogoEconomico['totale_aggiornato'] ?? 0), 2, ',', '.') }}
+            @endif
         </div>
         </div>
 
-        @if(!empty($extraPresidiSummary['rows'] ?? []))
+        @if(!$riepilogoSoloTotaleSenzaOrdine && !empty($extraPresidiSummary['rows'] ?? []))
             <div class="section breakable">
             <h2>Extra Presidi</h2>
             <table>
@@ -196,7 +205,7 @@
             </div>
         @endif
 
-        @if(($extraPresidiSummary['has_pending_manual_prices'] ?? false) === true)
+        @if(!$riepilogoSoloTotaleSenzaOrdine && ($extraPresidiSummary['has_pending_manual_prices'] ?? false) === true)
             <div class="section">
             <div class="note">
                 <strong>Attenzione:</strong> alcuni extra presidi non hanno ancora un prezzo manuale assegnato.
@@ -210,10 +219,12 @@
     <div class="note">
         <strong>Totale:</strong> {{ $anomalieRiepilogo['totale'] ?? 0 }}<br>
         <strong>Riparate:</strong> {{ $anomalieRiepilogo['riparate'] ?? 0 }}<br>
-        <strong>Da preventivare:</strong> {{ $anomalieRiepilogo['preventivo'] ?? 0 }}<br>
-        <strong>Importo riparate:</strong> € {{ number_format((float)($anomalieRiepilogo['importo_riparate'] ?? 0), 2, ',', '.') }}<br>
-        <strong>Importo preventivo:</strong> € {{ number_format((float)($anomalieRiepilogo['importo_preventivo'] ?? 0), 2, ',', '.') }}
-        @if($richiedeIncassoTecnico)
+        <strong>Da preventivare:</strong> {{ $anomalieRiepilogo['preventivo'] ?? 0 }}
+        @if(!$riepilogoSoloTotaleSenzaOrdine)
+            <br><strong>Importo riparate:</strong> € {{ number_format((float)($anomalieRiepilogo['importo_riparate'] ?? 0), 2, ',', '.') }}<br>
+            <strong>Importo preventivo:</strong> € {{ number_format((float)($anomalieRiepilogo['importo_preventivo'] ?? 0), 2, ',', '.') }}
+        @endif
+        @if($richiedeIncassoTecnico && !$riepilogoSoloTotaleSenzaOrdine)
             <br><strong>Totale intervento aggiornato:</strong> € {{ number_format((float)($riepilogoEconomico['totale_aggiornato'] ?? 0), 2, ',', '.') }}
         @endif
     </div>

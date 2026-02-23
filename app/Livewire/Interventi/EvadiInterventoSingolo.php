@@ -973,13 +973,23 @@ public function salvaNuovoPresidio()
             return;
         }
 
+        $ordineTrovato = (bool) ($this->ordinePreventivo['found'] ?? false);
+        $chiusuraSoloTotaleSenzaOrdine = $this->richiedePagamentoManutentore && !$ordineTrovato;
+
         if ($this->richiedePagamentoManutentore) {
             $metodo = $this->normalizePagamentoMetodo($this->pagamentoMetodo);
             $importo = $this->normalizePagamentoImporto($this->pagamentoImporto);
 
-            if (!$metodo || $importo === null) {
-                $this->messaggioErrore = 'Pagamento obbligatorio: seleziona metodo (POS/ASSEGNO/CONTANTI) e importo incassato.';
-                return;
+            if ($chiusuraSoloTotaleSenzaOrdine) {
+                if ($importo === null) {
+                    $this->messaggioErrore = 'Pagamento obbligatorio: inserisci il totale incassato.';
+                    return;
+                }
+            } else {
+                if (!$metodo || $importo === null) {
+                    $this->messaggioErrore = 'Pagamento obbligatorio: seleziona metodo (POS/ASSEGNO/CONTANTI) e importo incassato.';
+                    return;
+                }
             }
 
             $this->pagamentoMetodo = $metodo;
@@ -991,7 +1001,7 @@ public function salvaNuovoPresidio()
         if ($this->interventoCompletabile) {
             $riepilogoOrdine = $this->riepilogoOrdine;
             $extraPresidi = $riepilogoOrdine['extra_presidi'] ?? [];
-            if (($extraPresidi['has_pending_manual_prices'] ?? false) === true) {
+            if (($extraPresidi['has_pending_manual_prices'] ?? false) === true && !$chiusuraSoloTotaleSenzaOrdine) {
                 $codes = collect($extraPresidi['pending_manual_prices'] ?? [])
                     ->pluck('codice_articolo')
                     ->filter()

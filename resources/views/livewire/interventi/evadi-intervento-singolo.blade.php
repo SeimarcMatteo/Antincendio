@@ -22,46 +22,6 @@
         </div>
     </div>
 
-    <div class="bg-white border-2 border-red-200 rounded p-3 shadow-sm text-sm text-gray-800">
-        <div class="flex items-center justify-between gap-2">
-            <div class="font-extrabold tracking-wide">FORMA PAGAMENTO BUSINESS</div>
-            <button wire:click="ricaricaFormaPagamentoBusiness"
-                    type="button"
-                    class="px-2 py-1 rounded border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-100">
-                Ricarica da Business
-            </button>
-        </div>
-        @if($richiedePagamentoManutentore)
-            <div class="mt-1 text-sm font-bold text-red-700">
-                ALLA CONSEGNA (cod. 40): incasso da manutentore obbligatorio
-            </div>
-            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Metodo incasso</label>
-                    <select wire:model.live="pagamentoMetodo" class="w-full border-gray-300 rounded px-2 py-2 text-sm">
-                        <option value="">Seleziona metodo</option>
-                        <option value="POS">POS</option>
-                        <option value="ASSEGNO">ASSEGNO</option>
-                        <option value="CONTANTI">CONTANTI</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Importo incassato (€)</label>
-                    <input type="number"
-                           step="0.01"
-                           min="0"
-                           wire:model.blur="pagamentoImporto"
-                           placeholder="0,00"
-                           class="w-full border-gray-300 rounded px-2 py-2 text-sm">
-                </div>
-            </div>
-        @else
-            <div class="mt-1 text-sm font-bold text-gray-900">
-                {{ $formaPagamentoDescrizione ?: 'Non disponibile' }}
-            </div>
-        @endif
-    </div>
-
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div class="bg-yellow-50 border-2 border-yellow-300 rounded p-3 shadow-sm">
             <div class="text-sm font-extrabold text-yellow-900 uppercase tracking-wide">Note Intervento</div>
@@ -1023,6 +983,12 @@
             'totale_aggiornato' => 0,
         ];
         $senzaCodice = $riepilogoOrdine['presidi_senza_codice'] ?? [];
+        $ordineTrovato = (bool)($ordinePreventivo['found'] ?? false);
+        $chiusuraSoloTotaleSenzaOrdine = !$ordineTrovato && $richiedePagamentoManutentore;
+        $importoIncasso = is_numeric($pagamentoImporto ?? null) ? (float)$pagamentoImporto : null;
+        $totaleInterventoMostrato = $chiusuraSoloTotaleSenzaOrdine && $importoIncasso !== null
+            ? $importoIncasso
+            : (float)($riepilogoEconomico['totale_aggiornato'] ?? 0);
     @endphp
     <div class="bg-white border rounded p-4 shadow-sm space-y-4">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -1059,77 +1025,79 @@
             <div class="text-[11px] text-gray-500 mt-1">Prezzi da ordine Business; per codici extra non presenti in ordine inserire prezzo manuale.</div>
         </div>
 
-        <div>
-            <div class="text-sm font-semibold mb-1">Extra presidi da aggiungere all'ordine</div>
-            <div class="overflow-auto border rounded">
-                <table class="min-w-full text-xs">
-                    <thead class="bg-gray-100 text-gray-600">
-                        <tr>
-                            <th class="p-2 text-left">Cod. Art.</th>
-                            <th class="p-2 text-left">Descrizione</th>
-                            <th class="p-2 text-right">Q.tà extra</th>
-                            <th class="p-2 text-right">Prezzo unit.</th>
-                            <th class="p-2 text-right">Importo extra</th>
-                            <th class="p-2 text-left">Fonte prezzo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse(($extraPresidiRiep['rows'] ?? []) as $row)
-                            @php
-                                $price = $row['prezzo_unitario'] ?? null;
-                                $manualRequired = (bool) ($row['manual_required'] ?? false);
-                                $isPendingManual = $manualRequired && $price === null;
-                                $priceFormatted = $price !== null ? number_format((float) $price, 2, ',', '.') : '';
-                                $source = (string) ($row['prezzo_source'] ?? '');
-                            @endphp
-                            <tr class="border-t {{ $isPendingManual ? 'bg-amber-50' : '' }}">
-                                <td class="p-2 font-mono">{{ $row['codice_articolo'] }}</td>
-                                <td class="p-2">{{ $row['descrizione'] ?: '—' }}</td>
-                                <td class="p-2 text-right">{{ number_format((float)($row['quantita_extra'] ?? 0), 2, ',', '.') }}</td>
-                                <td class="p-2 text-right">
-                                    @if($manualRequired)
-                                        <div class="inline-flex items-center gap-2">
-                                            <input type="text"
-                                                   value="{{ $priceFormatted }}"
-                                                   wire:change="setPrezzoExtra({{ \Illuminate\Support\Js::from($row['codice_articolo']) }}, $event.target.value)"
-                                                   class="w-24 border {{ $isPendingManual ? 'border-amber-500 bg-amber-100' : 'border-gray-300' }} rounded px-2 py-1 text-right"
-                                                   placeholder="0,00">
-                                        </div>
-                                    @elseif($price !== null)
-                                        € {{ $priceFormatted }}
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td class="p-2 text-right">
-                                    @if(($row['importo_extra'] ?? null) !== null)
-                                        € {{ number_format((float) $row['importo_extra'], 2, ',', '.') }}
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td class="p-2">
-                                    @if($source === 'ordine')
-                                        Ordine Business
-                                    @elseif($source === 'manuale')
-                                        Inserito tecnico
-                                    @else
-                                        Prezzo richiesto
-                                    @endif
-                                </td>
+        @if(!$chiusuraSoloTotaleSenzaOrdine)
+            <div>
+                <div class="text-sm font-semibold mb-1">Extra presidi da aggiungere all'ordine</div>
+                <div class="overflow-auto border rounded">
+                    <table class="min-w-full text-xs">
+                        <thead class="bg-gray-100 text-gray-600">
+                            <tr>
+                                <th class="p-2 text-left">Cod. Art.</th>
+                                <th class="p-2 text-left">Descrizione</th>
+                                <th class="p-2 text-right">Q.tà extra</th>
+                                <th class="p-2 text-right">Prezzo unit.</th>
+                                <th class="p-2 text-right">Importo extra</th>
+                                <th class="p-2 text-left">Fonte prezzo</th>
                             </tr>
-                        @empty
-                            <tr><td colspan="6" class="p-2 text-gray-500">Nessun presidio extra rispetto all'ordine.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            @if(($extraPresidiRiep['has_pending_manual_prices'] ?? false) === true)
-                <div class="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">
-                    Inserisci i prezzi manuali dei codici articolo evidenziati prima della chiusura intervento.
+                        </thead>
+                        <tbody>
+                            @forelse(($extraPresidiRiep['rows'] ?? []) as $row)
+                                @php
+                                    $price = $row['prezzo_unitario'] ?? null;
+                                    $manualRequired = (bool) ($row['manual_required'] ?? false);
+                                    $isPendingManual = $manualRequired && $price === null;
+                                    $priceFormatted = $price !== null ? number_format((float) $price, 2, ',', '.') : '';
+                                    $source = (string) ($row['prezzo_source'] ?? '');
+                                @endphp
+                                <tr class="border-t {{ $isPendingManual ? 'bg-amber-50' : '' }}">
+                                    <td class="p-2 font-mono">{{ $row['codice_articolo'] }}</td>
+                                    <td class="p-2">{{ $row['descrizione'] ?: '—' }}</td>
+                                    <td class="p-2 text-right">{{ number_format((float)($row['quantita_extra'] ?? 0), 2, ',', '.') }}</td>
+                                    <td class="p-2 text-right">
+                                        @if($manualRequired)
+                                            <div class="inline-flex items-center gap-2">
+                                                <input type="text"
+                                                    value="{{ $priceFormatted }}"
+                                                    wire:change="setPrezzoExtra({{ \Illuminate\Support\Js::from($row['codice_articolo']) }}, $event.target.value)"
+                                                    class="w-24 border {{ $isPendingManual ? 'border-amber-500 bg-amber-100' : 'border-gray-300' }} rounded px-2 py-1 text-right"
+                                                    placeholder="0,00">
+                                            </div>
+                                        @elseif($price !== null)
+                                            € {{ $priceFormatted }}
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td class="p-2 text-right">
+                                        @if(($row['importo_extra'] ?? null) !== null)
+                                            € {{ number_format((float) $row['importo_extra'], 2, ',', '.') }}
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td class="p-2">
+                                        @if($source === 'ordine')
+                                            Ordine Business
+                                        @elseif($source === 'manuale')
+                                            Inserito tecnico
+                                        @else
+                                            Prezzo richiesto
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="p-2 text-gray-500">Nessun presidio extra rispetto all'ordine.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
-            @endif
-        </div>
+                @if(($extraPresidiRiep['has_pending_manual_prices'] ?? false) === true)
+                    <div class="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">
+                        Inserisci i prezzi manuali dei codici articolo evidenziati prima della chiusura intervento.
+                    </div>
+                @endif
+            </div>
+        @endif
 
         @if(!empty($senzaCodice))
             <div class="rounded border border-amber-300 bg-amber-50 p-3 text-xs">
@@ -1145,6 +1113,11 @@
         @if(!($ordinePreventivo['found'] ?? false))
             <div class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
                 {{ $ordinePreventivo['error'] ?? 'Ordine preventivo non trovato.' }}
+                @if($chiusuraSoloTotaleSenzaOrdine)
+                    <div class="mt-1 font-semibold">
+                        Modalità ALLA CONSEGNA: puoi chiudere l’intervento inserendo solo il totale incassato.
+                    </div>
+                @endif
             </div>
         @else
             @php $h = $ordinePreventivo['header'] ?? []; @endphp
@@ -1242,13 +1215,74 @@
         <div class="rounded border border-gray-300 bg-gray-50 p-3">
             <div class="text-xs text-gray-700">Totale intervento aggiornato</div>
             <div class="text-xl font-semibold text-gray-800">
-                € {{ number_format((float)($riepilogoEconomico['totale_aggiornato'] ?? 0), 2, ',', '.') }}
+                € {{ number_format((float)$totaleInterventoMostrato, 2, ',', '.') }}
             </div>
-            <div class="mt-1 text-[11px] text-gray-600">
-                Ordine Business € {{ number_format((float)($riepilogoEconomico['totale_ordine_business'] ?? 0), 2, ',', '.') }}
-                + Extra presidi € {{ number_format((float)($riepilogoEconomico['extra_presidi'] ?? 0), 2, ',', '.') }}
-                + Anomalie riparate € {{ number_format((float)($riepilogoEconomico['extra_anomalie_riparate'] ?? 0), 2, ',', '.') }}
+            @if($chiusuraSoloTotaleSenzaOrdine)
+                <div class="mt-1 text-[11px] text-gray-600">
+                    Totale manuale incassato (assenza ordine Business).
+                </div>
+            @else
+                <div class="mt-1 text-[11px] text-gray-600">
+                    Ordine Business € {{ number_format((float)($riepilogoEconomico['totale_ordine_business'] ?? 0), 2, ',', '.') }}
+                    + Extra presidi € {{ number_format((float)($riepilogoEconomico['extra_presidi'] ?? 0), 2, ',', '.') }}
+                    + Anomalie riparate € {{ number_format((float)($riepilogoEconomico['extra_anomalie_riparate'] ?? 0), 2, ',', '.') }}
+                </div>
+            @endif
+        </div>
+
+        <div class="bg-white border-2 border-red-200 rounded p-3 shadow-sm text-sm text-gray-800">
+            <div class="flex items-center justify-between gap-2">
+                <div class="font-extrabold tracking-wide">FORMA PAGAMENTO BUSINESS</div>
+                <button wire:click="ricaricaFormaPagamentoBusiness"
+                        type="button"
+                        class="px-2 py-1 rounded border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-100">
+                    Ricarica da Business
+                </button>
             </div>
+            @if($richiedePagamentoManutentore)
+                <div class="mt-1 text-sm font-bold text-red-700">
+                    ALLA CONSEGNA (cod. 40): incasso da manutentore obbligatorio
+                </div>
+                @if($chiusuraSoloTotaleSenzaOrdine)
+                    <div class="mt-2 text-xs text-gray-700">
+                        Nessun ordine trovato: per la chiusura è richiesto solo il totale incassato.
+                    </div>
+                    <div class="mt-3">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Totale incassato (€)</label>
+                        <input type="number"
+                            step="0.01"
+                            min="0"
+                            wire:model.blur="pagamentoImporto"
+                            placeholder="0,00"
+                            class="w-full md:w-64 border-gray-300 rounded px-2 py-2 text-sm">
+                    </div>
+                @else
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Metodo incasso</label>
+                            <select wire:model.live="pagamentoMetodo" class="w-full border-gray-300 rounded px-2 py-2 text-sm">
+                                <option value="">Seleziona metodo</option>
+                                <option value="POS">POS</option>
+                                <option value="ASSEGNO">ASSEGNO</option>
+                                <option value="CONTANTI">CONTANTI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Importo incassato (€)</label>
+                            <input type="number"
+                                step="0.01"
+                                min="0"
+                                wire:model.blur="pagamentoImporto"
+                                placeholder="0,00"
+                                class="w-full border-gray-300 rounded px-2 py-2 text-sm">
+                        </div>
+                    </div>
+                @endif
+            @else
+                <div class="mt-1 text-sm font-bold text-gray-900">
+                    {{ $formaPagamentoDescrizione ?: 'Non disponibile' }}
+                </div>
+            @endif
         </div>
 
         @if(!empty($anomalieRiep['dettaglio']))
