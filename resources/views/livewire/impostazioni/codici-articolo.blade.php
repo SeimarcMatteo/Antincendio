@@ -6,6 +6,9 @@
                 <p class="text-sm text-gray-600">
                     Gestisci i codici usati nel confronto ordine/intervento per noleggio e FULL SERVICE.
                 </p>
+                <p class="text-xs text-gray-500">
+                    Jolly supportato: usa <code>*</code> per match su Business (es. <code>N*P006</code>).
+                </p>
             </div>
             <button type="button"
                     wire:click="salvaTuttiEstintori"

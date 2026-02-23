@@ -2,6 +2,9 @@
     <h2 class="text-xl font-semibold text-red-600 mb-4">
         Imposta colori per tipologia di estintore
     </h2>
+    <p class="text-xs text-gray-500 mb-3">
+        Nei codici articolo puoi usare <code>*</code> come jolly (es. <code>N*P006</code>).
+    </p>
 
     <div class="bg-white shadow rounded border p-4">
         {{-- Intestazioni --}}

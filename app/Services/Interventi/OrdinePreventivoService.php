@@ -178,23 +178,78 @@ class OrdinePreventivoService
             }
         }
 
+        $ordineCodes = array_keys($ordineByCode);
+        $remainingOrdineByCode = [];
+        foreach ($ordineByCode as $code => $row) {
+            $remainingOrdineByCode[$code] = max(0, (float) ($row['quantita'] ?? 0));
+        }
+
         $interventoByCode = [];
         foreach ($righeIntervento as $riga) {
             $code = $this->normalizeCode($riga['codice_articolo'] ?? null);
             if (!$code) {
                 continue;
             }
-            if (!isset($interventoByCode[$code])) {
-                $interventoByCode[$code] = [
-                    'codice_articolo' => $code,
-                    'descrizione' => (string) ($riga['descrizione'] ?? ''),
-                    'quantita' => 0.0,
-                ];
+
+            $qty = (float) ($riga['quantita'] ?? 0);
+            if ($qty <= 0) {
+                continue;
             }
-            $interventoByCode[$code]['quantita'] += (float) ($riga['quantita'] ?? 0);
-            if ($interventoByCode[$code]['descrizione'] === '' && !empty($riga['descrizione'])) {
-                $interventoByCode[$code]['descrizione'] = (string) $riga['descrizione'];
+
+            $descrizione = (string) ($riga['descrizione'] ?? '');
+
+            // Supporto wildcard nei codici articolo (es: N*P006) per match su righe ordine.
+            if ($this->isWildcardPattern($code) && !empty($ordineCodes)) {
+                $matchedCodes = [];
+                foreach ($ordineCodes as $ordineCode) {
+                    if ($this->codeMatchesPattern($code, $ordineCode)) {
+                        $matchedCodes[] = $ordineCode;
+                    }
+                }
+
+                if (!empty($matchedCodes)) {
+                    sort($matchedCodes, SORT_NATURAL);
+                    $remainingQty = $qty;
+
+                    // Prima allinea la quantita ai codici presenti in ordine.
+                    foreach ($matchedCodes as $matchedCode) {
+                        if ($remainingQty <= 0.0001) {
+                            break;
+                        }
+
+                        $allocatable = max(0, (float) ($remainingOrdineByCode[$matchedCode] ?? 0));
+                        if ($allocatable <= 0.0001) {
+                            continue;
+                        }
+
+                        $allocated = min($remainingQty, $allocatable);
+                        $this->addInterventoRow(
+                            $interventoByCode,
+                            $matchedCode,
+                            $allocated,
+                            $descrizione !== '' ? $descrizione : (string) ($ordineByCode[$matchedCode]['descrizione'] ?? '')
+                        );
+
+                        $remainingQty -= $allocated;
+                        $remainingOrdineByCode[$matchedCode] = round($allocatable - $allocated, 4);
+                    }
+
+                    // Eventuale extra oltre ordine: lo attribuiamo al primo codice matchato.
+                    if ($remainingQty > 0.0001) {
+                        $targetCode = $matchedCodes[0];
+                        $this->addInterventoRow(
+                            $interventoByCode,
+                            $targetCode,
+                            $remainingQty,
+                            $descrizione !== '' ? $descrizione : (string) ($ordineByCode[$targetCode]['descrizione'] ?? '')
+                        );
+                    }
+
+                    continue;
+                }
             }
+
+            $this->addInterventoRow($interventoByCode, $code, $qty, $descrizione);
         }
 
         $allCodes = array_unique(array_merge(array_keys($ordineByCode), array_keys($interventoByCode)));
@@ -250,6 +305,26 @@ class OrdinePreventivoService
             'ordine_by_code' => array_values($ordineByCode),
             'intervento_by_code' => array_values($interventoByCode),
         ];
+    }
+
+    private function addInterventoRow(array &$rows, string $code, float $qty, string $descrizione = ''): void
+    {
+        if ($qty <= 0.0001) {
+            return;
+        }
+
+        if (!isset($rows[$code])) {
+            $rows[$code] = [
+                'codice_articolo' => $code,
+                'descrizione' => $descrizione,
+                'quantita' => 0.0,
+            ];
+        }
+
+        $rows[$code]['quantita'] += $qty;
+        if ($rows[$code]['descrizione'] === '' && $descrizione !== '') {
+            $rows[$code]['descrizione'] = $descrizione;
+        }
     }
 
     public function buildExtraPresidiSummary(array $confronto, array $manualPricesByCode = []): array
@@ -658,6 +733,23 @@ class OrdinePreventivoService
     {
         $code = mb_strtoupper(trim((string) $value));
         return $code === '' ? null : $code;
+    }
+
+    private function isWildcardPattern(string $code): bool
+    {
+        return str_contains($code, '*');
+    }
+
+    private function codeMatchesPattern(string $pattern, string $code): bool
+    {
+        if (!$this->isWildcardPattern($pattern)) {
+            return $pattern === $code;
+        }
+
+        $quoted = preg_quote($pattern, '/');
+        $regex = '/^' . str_replace('\*', '.*', $quoted) . '$/u';
+
+        return (bool) preg_match($regex, $code);
     }
 
     private function isFullServiceContratto($tipoContratto): bool
