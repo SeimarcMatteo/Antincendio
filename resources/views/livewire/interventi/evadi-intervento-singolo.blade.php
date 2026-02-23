@@ -106,7 +106,7 @@
                     <div class="text-xs font-semibold text-gray-700 mb-2">Sessioni tecnico</div>
                     <div class="space-y-2">
                         @forelse($timerSessioni as $sess)
-                            <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-end bg-white border rounded p-2">
+                            <div class="grid grid-cols-1 md:grid-cols-6 gap-2 items-end bg-white border rounded p-2">
                                 <div>
                                     <label class="text-[11px] text-gray-600">Inizio</label>
                                     <input type="datetime-local"
@@ -133,6 +133,14 @@
                                 </div>
                                 <div class="text-[11px] text-gray-500">
                                     ID sessione #{{ $sess['id'] }}
+                                </div>
+                                <div class="flex md:justify-end">
+                                    <button wire:click="eliminaSessioneTimer({{ $sess['id'] }})"
+                                            onclick="return confirm('Eliminare questa sessione timer?')"
+                                            class="px-3 py-2 text-sm rounded border border-red-300 text-red-700 hover:bg-red-50 w-full md:w-auto"
+                                            title="Elimina sessione">
+                                        🗑 Elimina
+                                    </button>
                                 </div>
                             </div>
                         @empty

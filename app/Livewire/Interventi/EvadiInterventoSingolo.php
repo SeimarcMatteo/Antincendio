@@ -351,8 +351,7 @@ public function salvaNuovoPresidio()
                 'started_at' => now(),
                 'ended_at' => null,
             ]);
-            $this->intervento->load('tecnici');
-            $this->refreshTimerState();
+            $this->reloadTimerContext();
             return;
         }
 
@@ -372,8 +371,7 @@ public function salvaNuovoPresidio()
         ]);
 
         $this->sincronizzaPivotTimer($it);
-        $this->intervento->load('tecnici');
-        $this->refreshTimerState();
+        $this->reloadTimerContext();
         $this->messaggioSuccesso = 'Sessione timer avviata.';
     }
 
@@ -387,8 +385,7 @@ public function salvaNuovoPresidio()
 
         if (!$this->timerSessioniEnabled) {
             $it->update(['ended_at' => now()]);
-            $this->intervento->load('tecnici');
-            $this->refreshTimerState();
+            $this->reloadTimerContext();
             return;
         }
 
@@ -406,8 +403,7 @@ public function salvaNuovoPresidio()
         $active->save();
 
         $this->sincronizzaPivotTimer($it);
-        $this->intervento->load('tecnici');
-        $this->refreshTimerState();
+        $this->reloadTimerContext();
         $this->messaggioSuccesso = 'Sessione timer chiusa.';
     }
 
@@ -466,8 +462,7 @@ public function salvaNuovoPresidio()
         $sessione->save();
 
         $this->sincronizzaPivotTimer($it);
-        $this->intervento->load('tecnici');
-        $this->refreshTimerState();
+        $this->reloadTimerContext();
         $this->messaggioSuccesso = 'Sessione timer aggiornata.';
     }
 
@@ -491,20 +486,42 @@ public function salvaNuovoPresidio()
             return;
         }
 
-        $exists = InterventoTecnico::where('intervento_id', $this->intervento->id)
-            ->where('user_id', $userId)
-            ->exists();
-
-        if (!$exists) {
-            $this->intervento->tecnici()->attach($userId, [
+        $this->intervento->tecnici()->syncWithoutDetaching([
+            $userId => [
                 'scheduled_start_at' => null,
                 'scheduled_end_at' => null,
-            ]);
+            ],
+        ]);
+
+        $this->reloadTimerContext();
+        $this->messaggioSuccesso = 'Tecnico associato all\'intervento. Timer disponibile.';
+    }
+
+    public function eliminaSessioneTimer(int $sessioneId): void
+    {
+        if (!$this->timerSessioniEnabled) {
+            return;
         }
 
-        $this->intervento->load('tecnici');
-        $this->refreshTimerState();
-        $this->messaggioSuccesso = 'Tecnico associato all\'intervento. Timer disponibile.';
+        $it = $this->currentInterventoTecnico();
+        if (!$it) {
+            $this->messaggioErrore = 'Tecnico non associato a questo intervento.';
+            return;
+        }
+
+        $sessione = InterventoTecnicoSessione::where('id', $sessioneId)
+            ->where('intervento_tecnico_id', $it->id)
+            ->first();
+
+        if (!$sessione) {
+            $this->messaggioErrore = 'Sessione timer non trovata.';
+            return;
+        }
+
+        $sessione->delete();
+        $this->sincronizzaPivotTimer($it);
+        $this->reloadTimerContext();
+        $this->messaggioSuccesso = 'Sessione timer eliminata.';
     }
 
     private function sincronizzaPivotTimer(InterventoTecnico $it): void
@@ -596,6 +613,22 @@ public function salvaNuovoPresidio()
         }
 
         $this->durataEffettiva = $this->calcolaDurataEffettivaTotaleIntervento();
+    }
+
+    private function reloadTimerContext(): void
+    {
+        $fresh = Intervento::query()
+            ->whereKey($this->intervento->id)
+            ->with('tecnici')
+            ->first();
+
+        if ($fresh) {
+            $this->intervento = $fresh;
+        } else {
+            $this->intervento->load('tecnici');
+        }
+
+        $this->refreshTimerState();
     }
 
     private function calcolaDurataEffettivaTotaleIntervento(): int
