@@ -11,7 +11,14 @@ class PdfController extends Controller
         $kind = $rapportinoSvc->normalizeKind((string) $request->query('kind', RapportinoInterventoService::KIND_CLIENTE));
         $data = $rapportinoSvc->buildDataByInterventoId($id);
         $pdf = $rapportinoSvc->buildPdf($kind, $data);
+        $filename = $rapportinoSvc->filename($kind, $data['intervento']);
 
-        return $pdf->stream($rapportinoSvc->filename($kind, $data['intervento']));
+        $download = filter_var($request->query('download', false), FILTER_VALIDATE_BOOL);
+
+        if ($download) {
+            return $pdf->download($filename);
+        }
+
+        return $pdf->stream($filename);
     }
 }

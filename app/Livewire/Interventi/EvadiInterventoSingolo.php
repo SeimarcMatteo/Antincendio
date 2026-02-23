@@ -1040,11 +1040,13 @@ public function salvaNuovoPresidio()
             $this->messaggioSuccesso ='Intervento evaso correttamente. Apertura rapportino in corso...';
 
             $clientePdfUrl = route('rapportino.pdf', ['id' => $this->intervento->id, 'kind' => 'cliente']);
-            $clienteMailtoUrl = $this->buildClienteMailtoUrl($clientePdfUrl);
+            $clientePdfDownloadUrl = route('rapportino.pdf', ['id' => $this->intervento->id, 'kind' => 'cliente', 'download' => 1]);
+            $clienteMailtoUrl = $this->buildClienteMailtoUrl();
 
             $this->dispatch(
                 'intervento-completato',
                 pdfUrl: $clientePdfUrl,
+                pdfDownloadUrl: $clientePdfDownloadUrl,
                 clienteMailtoUrl: $clienteMailtoUrl,
                 redirectUrl: route('interventi.evadi')
             );
@@ -1883,7 +1885,7 @@ public function salvaNuovoPresidio()
         }
     }
 
-    private function buildClienteMailtoUrl(string $clientePdfUrl): ?string
+    private function buildClienteMailtoUrl(): ?string
     {
         $emailCliente = trim((string) ($this->intervento->cliente?->email ?? ''));
         if ($emailCliente === '') {
@@ -1895,8 +1897,7 @@ public function salvaNuovoPresidio()
             : date('d/m/Y');
 
         $subject = 'Rapportino intervento ' . ($this->intervento->cliente?->nome ?? '');
-        $body = "Buongiorno,\n\ninviamo il rapportino dell'intervento del {$data}.\n";
-        $body .= "Link PDF: {$clientePdfUrl}\n\nCordiali saluti.";
+        $body = "Buongiorno,\n\ninviamo il rapportino dell'intervento del {$data} in allegato PDF.\n\nCordiali saluti.";
 
         return 'mailto:' . $emailCliente
             . '?subject=' . rawurlencode($subject)
