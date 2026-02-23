@@ -57,6 +57,7 @@ class EvadiInterventoSingolo extends Component
     public array $timerSessioniForm = [];
     public bool $timerAttivo = false;
     public int $timerTotaleMinuti = 0;
+    public bool $timerDisponibilePerUtente = false;
     public array $ordinePreventivo = [
         'found' => false,
         'error' => null,
@@ -482,6 +483,30 @@ public function salvaNuovoPresidio()
             ->first();
     }
 
+    public function associaTecnicoCorrenteTimer(): void
+    {
+        $userId = auth()->id();
+        if (!$userId) {
+            $this->messaggioErrore = 'Utente non autenticato.';
+            return;
+        }
+
+        $exists = InterventoTecnico::where('intervento_id', $this->intervento->id)
+            ->where('user_id', $userId)
+            ->exists();
+
+        if (!$exists) {
+            $this->intervento->tecnici()->attach($userId, [
+                'scheduled_start_at' => null,
+                'scheduled_end_at' => null,
+            ]);
+        }
+
+        $this->intervento->load('tecnici');
+        $this->refreshTimerState();
+        $this->messaggioSuccesso = 'Tecnico associato all\'intervento. Timer disponibile.';
+    }
+
     private function sincronizzaPivotTimer(InterventoTecnico $it): void
     {
         if (!$this->timerSessioniEnabled) {
@@ -514,11 +539,14 @@ public function salvaNuovoPresidio()
         $this->timerSessioniForm = [];
         $this->timerAttivo = false;
         $this->timerTotaleMinuti = 0;
+        $this->timerDisponibilePerUtente = false;
 
         $it = $this->currentInterventoTecnico();
         if (!$it) {
             return;
         }
+
+        $this->timerDisponibilePerUtente = true;
 
         if (!$this->timerSessioniEnabled) {
             $start = $it->started_at ? Carbon::parse($it->started_at) : null;

@@ -115,8 +115,6 @@ class FormPianificazioneIntervento extends Component
     {
         $this->clienteId = $clienteId;
         $this->sedeId = $sedeId;
-        $this->tecnici = [];
-        $this->tecniciOrari = [];
 
         // Se non arrivano mese/anno uso oggi+1
         if ($mese && $anno) {
@@ -127,6 +125,10 @@ class FormPianificazioneIntervento extends Component
         }
 
         $this->dataIntervento = $domani->format('Y-m-d');
+
+        if (!empty($this->tecnici)) {
+            $this->updatedTecnici();
+        }
     }
 
     public function updatedTecnici(): void
@@ -292,9 +294,11 @@ class FormPianificazioneIntervento extends Component
             ]);
         }
 
-        $this->reset(['clienteId', 'sedeId', 'dataIntervento', 'tecnici', 'tecniciOrari', 'noteIntervento']);
+        $this->reset(['clienteId', 'sedeId', 'dataIntervento', 'noteIntervento']);
+        $this->resetValidation();
         $this->resetInterventiStatoCache();
         $this->dispatch('intervento-pianificato');
+        $this->dispatch('intervento-pianificato')->to(PlanningSettimanale::class);
         $this->dispatch('toast', type: 'success', message: 'Intervento pianificato con successo!');
         $this->applicaFiltri();
     }

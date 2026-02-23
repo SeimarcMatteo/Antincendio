@@ -60,22 +60,32 @@
     </div>
 
     @php
-        $currentTecnico = $intervento->tecnici->firstWhere('id', auth()->id());
         $lastSession = $timerSessioni[0] ?? null;
         $start = $lastSession['started_at'] ?? '—';
         $end = $lastSession['ended_at'] ?? '—';
     @endphp
-    @if($currentTecnico)
-        <div class="text-sm bg-white border rounded p-3 shadow-sm space-y-3">
-            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-                <div class="font-semibold text-gray-700">⏱ Timer intervento</div>
+    <div class="text-sm bg-white border rounded p-3 shadow-sm space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div class="font-semibold text-gray-700">⏱ Timer intervento</div>
+            @if($timerDisponibilePerUtente)
                 <div class="text-xs text-gray-600 sm:ml-3">
                     Ultima sessione: <span class="font-medium">{{ $start }}</span> · <span class="font-medium">{{ $end }}</span>
                 </div>
                 <div class="text-xs font-semibold text-gray-700 sm:ml-auto">
                     Totale: {{ intdiv($timerTotaleMinuti, 60) }}h {{ $timerTotaleMinuti % 60 }}m
                 </div>
+            @endif
+        </div>
+
+        @if(!$timerDisponibilePerUtente)
+            <div class="rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                Il tuo utente non risulta associato ai tecnici di questo intervento.
+                <button wire:click="associaTecnicoCorrenteTimer"
+                        class="ml-2 px-3 py-1 text-xs font-semibold rounded border border-amber-400 bg-white hover:bg-amber-100">
+                    Associa il mio utente
+                </button>
             </div>
+        @else
             <div class="flex items-center gap-2">
                 <button
                     class="px-4 py-2 text-sm font-semibold rounded border {{ $timerAttivo ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-50' }}"
@@ -131,8 +141,8 @@
                     </div>
                 </div>
             @endif
-        </div>
-    @endif
+        @endif
+    </div>
 
     <datalist id="marca-serbatoio-opzioni">
         @foreach($marcaSuggestions as $marca)

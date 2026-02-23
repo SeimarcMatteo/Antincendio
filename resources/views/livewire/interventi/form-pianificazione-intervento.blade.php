@@ -124,7 +124,7 @@
                 @endforeach
 
                 @if(count($btns))
-                    <div class="border rounded-md p-3 bg-gray-50">
+                    <div class="border rounded-md p-3 bg-gray-50" wire:key="pianifica-da-{{ $cliente->id }}">
                         <div class="flex items-center justify-between mb-2">
                             <div class="font-semibold text-sm text-gray-900">{{ $cliente->nome }}</div>
                             <span class="text-xs text-gray-500">{{ $cliente->zona ?? '—' }}</span>
@@ -136,7 +136,8 @@
                         @endif
                         <div class="grid grid-cols-1 gap-2">
                             @foreach($btns as $b)
-                                <div class="rounded border bg-white p-2">
+                                @php $btnKey = $cliente->id.'-'.($b['sede_id'] ?? 'main'); @endphp
+                                <div class="rounded border bg-white p-2" wire:key="pianifica-btn-{{ $btnKey }}">
                                     <button
                                         wire:click="caricaDati({{ $cliente->id }}, {{ $b['sede_id'] ? $b['sede_id'] : 'null' }}, '{{ $meseSelezionato }}', '{{ $annoSelezionato }}')"
                                         class="btn btn-xs btn-secondary w-full justify-start">
@@ -233,7 +234,8 @@
                             @php
                                 $tecnicoSelezionato = in_array((int) $tec->id, array_map('intval', (array) $tecnici), true);
                             @endphp
-                            <div class="border rounded p-2 {{ $tecnicoSelezionato ? 'bg-red-50 border-red-200' : 'bg-gray-50' }}">
+                            <div class="border rounded p-2 {{ $tecnicoSelezionato ? 'bg-red-50 border-red-200' : 'bg-gray-50' }}"
+                                 wire:key="tecnico-planning-{{ $tec->id }}">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
                                     <label class="inline-flex items-center">
                                         <input type="checkbox" wire:model.live="tecnici" value="{{ $tec->id }}" class="mr-2">
@@ -260,6 +262,9 @@
                     <label class="block text-sm mb-1">Note intervento</label>
                     <textarea wire:model.defer="noteIntervento" class="input input-bordered w-full" rows="3" placeholder="Note per i tecnici (es. orari apertura)"></textarea>
                 </div>
+
+                @error('tecnici') <div class="text-xs text-red-600 mb-2">{{ $message }}</div> @enderror
+                @error('dataIntervento') <div class="text-xs text-red-600 mb-2">{{ $message }}</div> @enderror
 
                 <button wire:click="pianifica" class="btn btn-primary btn-sm w-full">
                     ✅ Conferma pianificazione
