@@ -1400,41 +1400,28 @@ let drawing = false;
 document.addEventListener('livewire:init', () => {
     if (!window.__evadiInterventoCompletatoHooked) {
         window.__evadiInterventoCompletatoHooked = true;
-        Livewire.on('intervento-completato', (payload) => {
-            const pdfUrl = payload?.pdfUrl ?? null;
-            const pdfDownloadUrl = payload?.pdfDownloadUrl ?? null;
-            const clienteMailtoUrl = payload?.clienteMailtoUrl ?? null;
-            const redirectUrl = payload?.redirectUrl ?? null;
+        Livewire.on('intervento-completato', (rawPayload) => {
+            const payload = Array.isArray(rawPayload) ? (rawPayload[0] ?? {}) : (rawPayload ?? {});
+            const pdfUrl = payload.pdfUrl ?? null;
+            const pdfDownloadUrl = payload.pdfDownloadUrl ?? null;
 
-            // Forza il download del PDF (evita invio come semplice link).
+            // Metodo cross-platform (Android / iPad / PC):
+            // 1) prova apertura in nuova scheda
+            // 2) se bloccata dal browser, apri nella stessa scheda
+            if (pdfUrl) {
+                const w = window.open(pdfUrl, '_blank', 'noopener');
+                if (!w) {
+                    window.location.assign(pdfUrl);
+                }
+                return;
+            }
+
             if (pdfDownloadUrl) {
-                const link = document.createElement('a');
-                link.href = pdfDownloadUrl;
-                link.rel = 'noopener';
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                setTimeout(() => link.remove(), 100);
-            } else if (pdfUrl) {
-                window.open(pdfUrl, '_blank', 'noopener');
+                window.location.assign(pdfDownloadUrl);
+                return;
             }
 
-            if (clienteMailtoUrl) {
-                setTimeout(() => {
-                    window.location.href = clienteMailtoUrl;
-                }, 250);
-            }
-
-            // Se viene aperta la mail, evitiamo redirect immediato che spesso interrompe il compose.
-            if (redirectUrl && !clienteMailtoUrl) {
-                setTimeout(() => {
-                    window.location.href = redirectUrl;
-                }, 1200);
-            } else if (redirectUrl) {
-                setTimeout(() => {
-                    window.location.href = redirectUrl;
-                }, 8000);
-            }
+            alert('Intervento completato, ma non è stato possibile aprire il rapportino PDF.');
         });
     }
 

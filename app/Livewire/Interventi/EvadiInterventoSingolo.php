@@ -1075,7 +1075,7 @@ public function salvaNuovoPresidio()
             }
             $this->intervento->update($payloadUpdate);
             $this->accodaMailRapportinoInterno();
-            $this->messaggioSuccesso ='Intervento evaso correttamente. Apertura rapportino in corso...';
+            $this->messaggioSuccesso ='Intervento evaso correttamente. Apertura rapportino PDF cliente...';
 
             $clientePdfUrl = route('rapportino.pdf', ['id' => $this->intervento->id, 'kind' => 'cliente']);
             $clientePdfDownloadUrl = route('rapportino.pdf', ['id' => $this->intervento->id, 'kind' => 'cliente', 'download' => 1]);
