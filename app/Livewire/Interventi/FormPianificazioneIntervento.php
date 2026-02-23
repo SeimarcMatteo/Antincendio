@@ -390,15 +390,31 @@ class FormPianificazioneIntervento extends Component
         $rows = [];
 
         foreach ($this->zoneDisponibili as $zona) {
-            $stat = $stats[$zona] ?? ['totale' => 0, 'pianificate' => 0];
-            $complete = ((int) $stat['totale'] > 0) && ((int) $stat['pianificate'] >= (int) $stat['totale']);
+            $stat = $stats[$zona] ?? ['totale' => 0, 'pianificate' => 0, 'completate' => 0];
+            $totale = (int) ($stat['totale'] ?? 0);
+            $pianificate = (int) ($stat['pianificate'] ?? 0);
+            $completate = (int) ($stat['completate'] ?? 0);
+
+            $empty = $totale === 0;
+            $plannedComplete = $totale > 0 && $pianificate >= $totale;
+            $completedComplete = $totale > 0 && $completate >= $totale;
+
+            $label = $zona;
+            if ($completedComplete) {
+                $label .= ' **';
+            } elseif ($plannedComplete) {
+                $label .= ' *';
+            }
 
             $rows[] = [
                 'value' => $zona,
-                'label' => $zona . ($complete ? ' *' : ''),
-                'complete' => $complete,
-                'totale' => (int) $stat['totale'],
-                'pianificate' => (int) $stat['pianificate'],
+                'label' => $label,
+                'complete' => $plannedComplete,
+                'completed' => $completedComplete,
+                'empty' => $empty,
+                'totale' => $totale,
+                'pianificate' => $pianificate,
+                'completate' => $completate,
             ];
         }
 
@@ -423,7 +439,7 @@ class FormPianificazioneIntervento extends Component
         $seen = [];
 
         foreach ($this->zoneDisponibili as $zona) {
-            $stats[$zona] = ['totale' => 0, 'pianificate' => 0];
+            $stats[$zona] = ['totale' => 0, 'pianificate' => 0, 'completate' => 0];
         }
 
         $clienti = Cliente::with([
@@ -447,11 +463,14 @@ class FormPianificazioneIntervento extends Component
                     if (!isset($seen[$entryKey])) {
                         $seen[$entryKey] = true;
                         if (!isset($stats[$zona])) {
-                            $stats[$zona] = ['totale' => 0, 'pianificate' => 0];
+                            $stats[$zona] = ['totale' => 0, 'pianificate' => 0, 'completate' => 0];
                         }
                         $stats[$zona]['totale']++;
                         if ($this->interventoEsistente($cliente->id, null)) {
                             $stats[$zona]['pianificate']++;
+                        }
+                        if ($this->interventoEvasa($cliente->id, null)) {
+                            $stats[$zona]['completate']++;
                         }
                     }
                 }
@@ -474,11 +493,14 @@ class FormPianificazioneIntervento extends Component
 
                 $seen[$entryKey] = true;
                 if (!isset($stats[$zona])) {
-                    $stats[$zona] = ['totale' => 0, 'pianificate' => 0];
+                    $stats[$zona] = ['totale' => 0, 'pianificate' => 0, 'completate' => 0];
                 }
                 $stats[$zona]['totale']++;
                 if ($this->interventoEsistente($cliente->id, $sede->id)) {
                     $stats[$zona]['pianificate']++;
+                }
+                if ($this->interventoEvasa($cliente->id, $sede->id)) {
+                    $stats[$zona]['completate']++;
                 }
             }
         }

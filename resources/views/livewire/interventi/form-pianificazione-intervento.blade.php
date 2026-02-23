@@ -16,7 +16,10 @@
                 <select wire:model.defer="zonaFiltro" class="select select-sm select-bordered min-w-[180px]">
                     <option value="">Tutte</option>
                     @foreach($zoneConStato as $zonaRow)
-                        <option value="{{ $zonaRow['value'] }}">{{ $zonaRow['label'] }}</option>
+                        <option value="{{ $zonaRow['value'] }}">
+                            @if($zonaRow['empty']) 🔴 @elseif($zonaRow['completed']) ✅ @elseif($zonaRow['complete']) 🟨 @endif
+                            {{ $zonaRow['label'] }}
+                        </option>
                     @endforeach
                 </select>
             </div>
@@ -37,6 +40,25 @@
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">Pianificata</span>
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700">Da pianificare</span>
             <span class="inline-flex items-center px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">* Zona pianificata completamente</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-700">** Zona completata completamente</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-700">🔴 Nessun presidio nel mese</span>
+        </div>
+
+        <div class="mt-2 flex flex-wrap gap-2 text-xs">
+            @foreach($zoneConStato as $zonaRow)
+                <button type="button"
+                        wire:click='$set("zonaFiltro", @js($zonaRow["value"]))'
+                        class="px-2 py-1 rounded border {{ $zonaRow['empty']
+                            ? 'bg-red-50 border-red-200 text-red-700'
+                            : ($zonaRow['completed']
+                                ? 'bg-green-50 border-green-200 text-green-700'
+                                : ($zonaRow['complete']
+                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                    : 'bg-gray-50 border-gray-200 text-gray-700')) }}">
+                    {{ $zonaRow['label'] }}
+                    <span class="ml-1">({{ $zonaRow['completate'] }}/{{ $zonaRow['totale'] }})</span>
+                </button>
+            @endforeach
         </div>
 
         @php
@@ -124,7 +146,15 @@
                 @endforeach
 
                 @if(count($btns))
-                    <div class="border rounded-md p-3 bg-gray-50" wire:key="pianifica-da-{{ $cliente->id }}">
+                    @php
+                        $selectedSede = is_numeric($sedeId) ? (int)$sedeId : null;
+                        $cardSelected = ((int)($clienteId ?? 0) === (int)$cliente->id) && collect($btns)->contains(function ($row) use ($selectedSede) {
+                            $rowSede = $row['sede_id'] ?? null;
+                            return ($rowSede === null && $selectedSede === null)
+                                || ($rowSede !== null && (int)$rowSede === $selectedSede);
+                        });
+                    @endphp
+                    <div class="border rounded-md p-3 {{ $cardSelected ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200' }}" wire:key="pianifica-da-{{ $cliente->id }}">
                         <div class="flex items-center justify-between mb-2">
                             <div class="font-semibold text-sm text-gray-900">{{ $cliente->nome }}</div>
                             <span class="text-xs text-gray-500">{{ $cliente->zona ?? '—' }}</span>
@@ -138,17 +168,22 @@
                             @foreach($btns as $b)
                                 @php $btnKey = $cliente->id.'-'.($b['sede_id'] ?? 'main'); @endphp
                                 <div class="rounded border bg-white p-2" wire:key="pianifica-btn-{{ $btnKey }}">
+                                    @php
+                                        $rowSede = $b['sede_id'] ?? null;
+                                        $isSelected = ((int)($clienteId ?? 0) === (int)$cliente->id)
+                                            && (($rowSede === null && $selectedSede === null) || ($rowSede !== null && (int)$rowSede === $selectedSede));
+                                    @endphp
                                     <button
                                         wire:click="caricaDati({{ $cliente->id }}, {{ $b['sede_id'] ? $b['sede_id'] : 'null' }}, '{{ $meseSelezionato }}', '{{ $annoSelezionato }}')"
-                                        class="btn btn-xs btn-secondary w-full justify-start">
+                                        class="w-full text-left rounded border px-3 py-3 text-sm font-semibold min-h-[54px] {{ $isSelected ? 'bg-green-100 border-green-400 text-green-900' : 'bg-white border-gray-300 text-gray-800 hover:bg-gray-50' }}">
                                         📍 {{ $b['label'] }} @if($b['extra']) – {{ $b['extra'] }} @endif
                                     </button>
                                     <div class="mt-1 text-[11px] text-gray-600">
                                         Zona: <span class="font-semibold">{{ $b['zona'] !== '' ? $b['zona'] : '—' }}</span>
-                                        · {{ $meseCorrLabel }}:
-                                        <span class="font-semibold">{{ intdiv((int)$b['minuti_corrente'], 60) }} h {{ (int)$b['minuti_corrente'] % 60 }} min</span>
-                                        · {{ $meseSeiLabel }} (+6):
-                                        <span class="font-semibold">{{ intdiv((int)$b['minuti_mese_sei'], 60) }} h {{ (int)$b['minuti_mese_sei'] % 60 }} min</span>
+                                        · Tempo {{ $meseCorrLabel }}:
+                                        <span class="font-semibold">{{ (int)$b['minuti_corrente'] }} min</span>
+                                        · Tempo {{ $meseSeiLabel }} (+6):
+                                        <span class="font-semibold">{{ (int)$b['minuti_mese_sei'] }} min</span>
                                     </div>
                                 </div>
                             @endforeach
