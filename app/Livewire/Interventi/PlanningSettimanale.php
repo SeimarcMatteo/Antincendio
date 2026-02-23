@@ -17,6 +17,7 @@ class PlanningSettimanale extends Component
     public string $vista = 'settimanale';
     public string $meseRiferimento;
     public array $azioniTecnico = [];
+    public ?string $bulkData = null;
     public ?string $bulkZona = null;
     public $bulkTecnicoDa = null;
     public $bulkTecnicoA = null;
@@ -26,6 +27,7 @@ class PlanningSettimanale extends Component
     {
         $this->inizioSettimana = now()->startOfWeek(Carbon::MONDAY)->format('Y-m-d');
         $this->meseRiferimento = now()->format('Y-m');
+        $this->bulkData = now()->format('Y-m-d');
     }
 
     public function getKeySettimanaProperty()
@@ -154,17 +156,19 @@ class PlanningSettimanale extends Component
             ])
             ->get();
 
+        $bulkDataRef = $this->normalizeBulkData();
         $tecniciDisponibili = $this->tecniciDisponibili();
-        $zoneSettimanali = $this->zoneSettimanali($from, $to);
+        $zoneGiorno = $this->zonePerData($bulkDataRef);
         $calendarioMensile = $this->calendarioMensile();
 
         return view('livewire.interventi.planning-settimanale', [
             'giorni' => $this->giorn,
             'tecnici' => $tecnici,
             'tecniciDisponibili' => $tecniciDisponibili,
-            'zoneSettimanali' => $zoneSettimanali,
+            'zoneGiorno' => $zoneGiorno,
             'calendarioMensile' => $calendarioMensile,
             'meseLabel' => Carbon::createFromFormat('Y-m', $this->meseRiferimento)->translatedFormat('F Y'),
+            'bulkDataRef' => $bulkDataRef,
         ])->layout('layouts.app'); // ✅ se usi il classico layout Laravel Breeze
     ;
     }
@@ -331,14 +335,15 @@ class PlanningSettimanale extends Component
         $this->dispatch('toast', type: 'success', message: 'Tecnico aggiunto alla pianificazione.');
     }
 
-    public function spostaZonaSettimana(): void
+    public function spostaZonaGiorno(): void
     {
         $zona = trim((string) $this->bulkZona);
         $tecnicoDa = (int) ($this->bulkTecnicoDa ?? 0);
         $tecnicoA = (int) ($this->bulkTecnicoA ?? 0);
+        $dataRef = $this->normalizeBulkData();
 
         if ($zona === '' || $tecnicoDa <= 0 || $tecnicoA <= 0) {
-            $this->dispatch('toast', type: 'warning', message: 'Compila zona, tecnico origine e tecnico destinazione.');
+            $this->dispatch('toast', type: 'warning', message: 'Compila giorno, zona, tecnico origine e tecnico destinazione.');
             return;
         }
         if ($tecnicoDa === $tecnicoA) {
@@ -346,18 +351,15 @@ class PlanningSettimanale extends Component
             return;
         }
 
-        $from = Carbon::parse($this->inizioSettimana)->startOfDay()->toDateString();
-        $to = Carbon::parse($this->inizioSettimana)->endOfWeek(Carbon::SUNDAY)->toDateString();
-
         $interventiIds = Intervento::query()
-            ->whereBetween('data_intervento', [$from, $to])
+            ->whereDate('data_intervento', $dataRef)
             ->where('stato', 'Pianificato')
             ->where('zona', $zona)
             ->whereHas('tecnici', fn($q) => $q->where('users.id', $tecnicoDa))
             ->pluck('id');
 
         if ($interventiIds->isEmpty()) {
-            $this->dispatch('toast', type: 'info', message: 'Nessun intervento pianificato da spostare per i filtri selezionati.');
+            $this->dispatch('toast', type: 'info', message: 'Nessun intervento pianificato da spostare nel giorno selezionato.');
             return;
         }
 
@@ -398,12 +400,23 @@ class PlanningSettimanale extends Component
             }
         });
 
+        $giornoLabel = Carbon::parse($dataRef)->format('d/m/Y');
         if ($spostati > 0) {
-            $this->dispatch('toast', type: 'success', message: "Spostamento completato: {$spostati} interventi spostati, {$saltati} saltati.");
+            $this->dispatch('toast', type: 'success', message: "Spostamento {$giornoLabel}: {$spostati} interventi spostati, {$saltati} saltati.");
             return;
         }
 
-        $this->dispatch('toast', type: 'info', message: "Nessun intervento spostato ({$saltati} già assegnati al tecnico destinazione).");
+        $this->dispatch('toast', type: 'info', message: "Nessun intervento spostato nel {$giornoLabel} ({$saltati} già assegnati al tecnico destinazione).");
+    }
+
+    public function spostaZonaSettimana(): void
+    {
+        $this->spostaZonaGiorno();
+    }
+
+    public function updatedBulkData(): void
+    {
+        $this->bulkZona = null;
     }
 
     private function tecniciDisponibili()
@@ -414,10 +427,10 @@ class PlanningSettimanale extends Component
             ->get(['id', 'name']);
     }
 
-    private function zoneSettimanali(string $from, string $to): array
+    private function zonePerData(string $date): array
     {
         return Intervento::query()
-            ->whereBetween('data_intervento', [$from, $to])
+            ->whereDate('data_intervento', $date)
             ->whereNotNull('zona')
             ->where('zona', '!=', '')
             ->distinct()
@@ -518,5 +531,14 @@ class PlanningSettimanale extends Component
     private function azioneKey(int $interventoId, int $tecnicoId): string
     {
         return $interventoId . ':' . $tecnicoId;
+    }
+
+    private function normalizeBulkData(): string
+    {
+        try {
+            return Carbon::parse((string) $this->bulkData)->toDateString();
+        } catch (\Throwable $e) {
+            return Carbon::parse($this->inizioSettimana)->toDateString();
+        }
     }
 }

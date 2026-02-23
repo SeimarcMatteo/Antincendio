@@ -29,11 +29,17 @@
             </div>
 
             <div class="rounded border border-indigo-200 bg-indigo-50 p-3">
-                <div class="text-sm font-semibold text-indigo-900 mb-2">Spostamento massivo per zona (settimana corrente)</div>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                <div class="text-sm font-semibold text-indigo-900 mb-2">
+                    Spostamento massivo per zona (giorno selezionato: {{ \Carbon\Carbon::parse($bulkDataRef)->format('d/m/Y') }})
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+                    <input type="date"
+                           wire:model.live="bulkData"
+                           class="w-full border border-indigo-200 rounded px-2 py-2 text-sm bg-white">
+
                     <select wire:model="bulkZona" class="w-full border border-indigo-200 rounded px-2 py-2 text-sm bg-white">
                         <option value="">Seleziona zona</option>
-                        @foreach($zoneSettimanali as $zona)
+                        @foreach($zoneGiorno as $zona)
                             <option value="{{ $zona }}">{{ $zona }}</option>
                         @endforeach
                     </select>
@@ -52,13 +58,13 @@
                         @endforeach
                     </select>
 
-                    <button wire:click="spostaZonaSettimana"
+                    <button wire:click="spostaZonaGiorno"
                             class="w-full rounded bg-indigo-600 text-white font-semibold py-2 px-3 hover:bg-indigo-700">
-                        Sposta tutta la zona
+                        Sposta zona del giorno
                     </button>
                 </div>
                 <div class="mt-2 text-[11px] text-indigo-800">
-                    Sposta tutti gli interventi Pianificati della zona/settimana dal tecnico origine al tecnico destinazione.
+                    Sposta tutti gli interventi Pianificati della zona nel giorno selezionato dal tecnico origine al tecnico destinazione.
                     Gli interventi già assegnati al tecnico destinazione vengono saltati.
                 </div>
             </div>
